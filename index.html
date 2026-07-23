@@ -182,11 +182,18 @@
       <button class="preset-btn" onclick="saveStore()">현재 점포 저장</button>
       <select id="storeList" aria-label="저장된 점포 선택"><option value="">저장된 점포 선택…</option></select>
       <button class="preset-btn" onclick="loadStore()">불러오기</button>
+      <button class="preset-btn ghost" onclick="refreshFromSheet()">새로고침</button>
       <button class="preset-btn ghost" onclick="deleteStore()">삭제</button>
-      <button class="preset-btn ghost" onclick="exportStores()">내보내기</button>
-      <button class="preset-btn ghost" onclick="document.getElementById('importFile').click()">가져오기</button>
+      <button class="preset-btn" onclick="shareStore()">공유 링크</button>
+      <button class="preset-btn ghost" onclick="exportStores()">백업</button>
+      <button class="preset-btn ghost" onclick="document.getElementById('importFile').click()">복원</button>
       <input type="file" id="importFile" accept=".json,application/json" style="display:none;" onchange="importStores(this)">
-      <span class="saved-info" id="saveInfo">점포명 기준으로 이 브라우저에 저장됩니다</span>
+      <span class="saved-info" id="saveInfo">-</span>
+    </div>
+    <div class="toolbar">
+      <span style="font-size:12px;color:var(--sub);white-space:nowrap;">Google 시트 연동</span>
+      <input type="text" id="syncUrl" placeholder="Apps Script 웹 앱 URL — 입력 시 저장·수정이 시트에 자동 반영됩니다" style="flex:1;min-width:220px;padding:7px 9px;border:1px solid var(--line);border-radius:6px;font-size:12px;font-family:inherit;" onchange="connectSheet()">
+      <span class="saved-info" id="syncState">미연결 (이 기기에만 저장)</span>
     </div>
   </div>
 
@@ -664,26 +671,41 @@ document.querySelectorAll('.pnl td.rmk').forEach((el, i) => {
   el.addEventListener('input', () => { el.dataset.edited = '1'; });
 });
 
-// ===== 점포별 저장 / 불러오기 (브라우저 localStorage) =====
+// ===== 점포 데이터 저장 — Google 시트를 주 저장소로 사용 =====
+// 시트 URL 연결 시: 저장/삭제 즉시 시트 반영, 페이지 열 때 자동 최신화 (모든 기기 공유)
+// 미연결 시: 이 브라우저(localStorage)에만 저장 (오프라인 폴백)
 const STORE_KEY = 'pascucciRoiStores';
-function safeGetStores() {
-  try { return JSON.parse(localStorage.getItem(STORE_KEY)) || {}; } catch (e) { return {}; }
+const SYNC_KEY = 'pascucciRoiSyncUrl';
+let stores = {};          // 메모리상 점포 데이터 (시트 or 로컬)
+let sheetConnected = false;
+
+function localCache() { try { return JSON.parse(localStorage.getItem(STORE_KEY)) || {}; } catch (e) { return {}; } }
+function saveLocalCache() { try { localStorage.setItem(STORE_KEY, JSON.stringify(stores)); } catch (e) {} }
+function getSyncUrl() {
+  const url = (document.getElementById('syncUrl').value || '').trim();
+  return url.indexOf('https://script.google.com/') === 0 ? url : null;
 }
+function setSyncState(msg, ok) {
+  const el = document.getElementById('syncState');
+  el.textContent = msg;
+  el.style.color = ok === true ? 'var(--good)' : (ok === false ? 'var(--bad)' : 'var(--sub)');
+}
+function info(msg) { document.getElementById('saveInfo').textContent = msg; }
+
 function refreshStoreList(selected) {
   const sel = document.getElementById('storeList');
-  const stores = safeGetStores();
   sel.innerHTML = '<option value="">저장된 점포 선택…</option>';
   Object.keys(stores).sort().forEach(name => {
     const opt = document.createElement('option');
     opt.value = name;
-    opt.textContent = name + ' (' + stores[name].ts + ')';
+    opt.textContent = name + ' (' + (stores[name].ts || '') + ')';
     if (name === selected) opt.selected = true;
     sel.appendChild(opt);
   });
 }
 function collectState() {
   const values = {};
-  document.querySelectorAll('input[id], select[id]').forEach(el => { if (el.id !== 'storeList' && el.type !== 'file') values[el.id] = el.value; });
+  document.querySelectorAll('input[id], select[id]').forEach(el => { if (el.id !== 'storeList' && el.id !== 'syncUrl' && el.type !== 'file') values[el.id] = el.value; });
   const rmks = [], rmkEdited = [];
   document.querySelectorAll('.pnl td.rmk').forEach(el => { rmks.push(el.textContent); rmkEdited.push(el.dataset.edited === '1'); });
   return { values, rmks, rmkEdited };
@@ -697,50 +719,102 @@ function applyState(st) {
   });
   calc();
 }
-function saveStore() {
+function nowTs() {
+  const n = new Date();
+  return n.getFullYear().toString().slice(2) + '/' + String(n.getMonth()+1).padStart(2,'0') + '/' + String(n.getDate()).padStart(2,'0') + ' ' + String(n.getHours()).padStart(2,'0') + ':' + String(n.getMinutes()).padStart(2,'0');
+}
+async function sheetPost(body) {
+  const url = getSyncUrl();
+  if (!url) return null;
+  const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(body) });
+  return await res.json();
+}
+async function saveStore() {
   const name = (document.getElementById('storeName').value || '').trim() || '이름 없는 점포';
-  try {
-    const stores = safeGetStores();
-    const now = new Date();
-    const ts = now.getFullYear().toString().slice(2) + '/' + String(now.getMonth()+1).padStart(2,'0') + '/' + String(now.getDate()).padStart(2,'0') + ' ' + String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0');
-    stores[name] = Object.assign({ ts }, collectState());
-    localStorage.setItem(STORE_KEY, JSON.stringify(stores));
-    refreshStoreList(name);
-    document.getElementById('saveInfo').textContent = "'" + name + "' 저장 완료 (" + ts + ")";
-  } catch (e) {
-    document.getElementById('saveInfo').textContent = '저장 실패: 이 환경에서는 브라우저 저장이 지원되지 않습니다';
+  const st = Object.assign({ ts: nowTs() }, collectState());
+  stores[name] = st;
+  saveLocalCache();
+  refreshStoreList(name);
+  if (getSyncUrl()) {
+    info("'" + name + "' 시트에 저장 중…");
+    try {
+      const r = await sheetPost({ action: 'save', name, store: st });
+      if (r && r.ok) { info("'" + name + "' 시트에 저장 완료 — 다른 기기에서 바로 확인 가능합니다"); setSyncState('시트 연결됨 · 최근 저장 ' + st.ts, true); }
+      else info("'" + name + "' 시트 저장 실패(" + (r && r.error || '응답 오류') + ") — 이 기기에는 저장되었습니다");
+    } catch (e) {
+      info("'" + name + "' 시트 통신 실패 — 이 기기에는 저장되었습니다. 네트워크 확인 후 다시 저장하세요");
+      setSyncState('시트 통신 실패 (오프라인 저장 중)', false);
+    }
+  } else {
+    info("'" + name + "' 이 기기에 저장됨 — 시트 URL 연결 시 모든 기기에서 공유됩니다");
   }
 }
 function loadStore() {
   const name = document.getElementById('storeList').value;
-  if (!name) { document.getElementById('saveInfo').textContent = '불러올 점포를 먼저 선택하세요'; return; }
-  const st = safeGetStores()[name];
-  if (!st) { document.getElementById('saveInfo').textContent = '저장 데이터를 찾을 수 없습니다'; return; }
+  if (!name) { info('불러올 점포를 먼저 선택하세요'); return; }
+  const st = stores[name];
+  if (!st) { info('저장 데이터를 찾을 수 없습니다'); return; }
   applyState(st);
-  document.getElementById('saveInfo').textContent = "'" + name + "' 불러오기 완료 (저장: " + st.ts + ")";
+  info("'" + name + "' 불러오기 완료 (저장: " + (st.ts || '-') + ")");
 }
-function deleteStore() {
+async function deleteStore() {
   const name = document.getElementById('storeList').value;
-  if (!name) { document.getElementById('saveInfo').textContent = '삭제할 점포를 먼저 선택하세요'; return; }
-  if (!confirm("'" + name + "' 저장 데이터를 삭제할까요?")) return;
-  try {
-    const stores = safeGetStores();
-    delete stores[name];
-    localStorage.setItem(STORE_KEY, JSON.stringify(stores));
-    refreshStoreList('');
-    document.getElementById('saveInfo').textContent = "'" + name + "' 삭제 완료";
-  } catch (e) {}
-}
-function exportStores() {
-  const stores = safeGetStores();
-  const names = Object.keys(stores);
-  // 현재 화면 입력값도 함께 포함 (미저장 상태 대비)
-  const name = (document.getElementById('storeName').value || '').trim() || '이름 없는 점포';
-  if (!stores[name]) {
-    if (confirm("현재 화면의 '" + name + "' 데이터가 아직 저장되지 않았습니다. 저장 후 내보낼까요?")) saveStore();
+  if (!name) { info('삭제할 점포를 먼저 선택하세요'); return; }
+  if (!confirm("'" + name + "' 데이터를 삭제할까요?" + (getSyncUrl() ? ' (시트에서도 삭제됩니다)' : ''))) return;
+  delete stores[name];
+  saveLocalCache();
+  refreshStoreList('');
+  if (getSyncUrl()) {
+    try {
+      const r = await sheetPost({ action: 'delete', name });
+      info(r && r.ok ? "'" + name + "' 삭제 완료 (시트 반영)" : "'" + name + "' 시트 삭제 실패 — 새로고침 후 다시 시도하세요");
+    } catch (e) { info("'" + name + "' 시트 통신 실패 — 이 기기에서만 삭제되었습니다"); }
+  } else {
+    info("'" + name + "' 삭제 완료");
   }
-  const data = { app: 'pascucci-roi', version: 1, exportedAt: new Date().toISOString(), stores: safeGetStores() };
-  if (Object.keys(data.stores).length === 0) { document.getElementById('saveInfo').textContent = '내보낼 저장 데이터가 없습니다. 먼저 저장하세요.'; return; }
+}
+async function refreshFromSheet(silent) {
+  const url = getSyncUrl();
+  if (!url) {
+    stores = localCache();
+    refreshStoreList('');
+    if (!silent) info('시트 미연결 — 이 기기의 저장 데이터를 표시합니다');
+    setSyncState('미연결 (이 기기에만 저장)');
+    return;
+  }
+  if (!silent) info('시트에서 최신 데이터를 불러오는 중…');
+  setSyncState('시트 연결 중…');
+  try {
+    const res = await fetch(url);
+    const data = await res.json();
+    if (!data.ok || typeof data.stores !== 'object') throw new Error(data.error || '응답 오류');
+    stores = data.stores;
+    sheetConnected = true;
+    saveLocalCache();
+    refreshStoreList(document.getElementById('storeList').value || '');
+    const n = Object.keys(stores).length;
+    setSyncState('시트 연결됨 · 점포 ' + n + '건', true);
+    if (!silent) info('시트에서 ' + n + '개 점포를 불러왔습니다 (모든 기기 공통)');
+  } catch (e) {
+    sheetConnected = false;
+    stores = localCache();
+    refreshStoreList('');
+    setSyncState('시트 연결 실패 — 이 기기 데이터 표시 중', false);
+    if (!silent) info('시트 연결 실패: URL·배포 설정(액세스: 모든 사용자)·네트워크를 확인하세요. 로컬(file://)에서는 동작하지 않습니다.');
+  }
+}
+function connectSheet() {
+  const url = (document.getElementById('syncUrl').value || '').trim();
+  try { localStorage.setItem(SYNC_KEY, url); } catch (e) {}
+  refreshFromSheet();
+}
+
+// ===== 백업(JSON 내보내기) / 복원 =====
+function exportStores() {
+  const name = (document.getElementById('storeName').value || '').trim() || '이름 없는 점포';
+  if (!stores[name] && confirm("현재 화면의 '" + name + "' 데이터가 아직 저장되지 않았습니다. 저장 후 백업할까요?")) { saveStore(); }
+  if (Object.keys(stores).length === 0) { info('백업할 저장 데이터가 없습니다. 먼저 저장하세요.'); return; }
+  const data = { app: 'pascucci-roi', version: 1, exportedAt: new Date().toISOString(), stores };
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
   const a = document.createElement('a');
   const now = new Date();
@@ -750,37 +824,91 @@ function exportStores() {
   document.body.appendChild(a);
   a.click();
   setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
-  document.getElementById('saveInfo').textContent = Object.keys(data.stores).length + '개 점포 데이터를 JSON 파일로 내보냈습니다';
+  info(Object.keys(stores).length + '개 점포 데이터를 JSON 파일로 백업했습니다');
 }
 function importStores(input) {
   const file = input.files && input.files[0];
   input.value = '';
   if (!file) return;
   const reader = new FileReader();
-  reader.onload = () => {
+  reader.onload = async () => {
     try {
       const data = JSON.parse(reader.result);
       const incoming = data && data.app === 'pascucci-roi' && data.stores ? data.stores : null;
-      if (!incoming || typeof incoming !== 'object') { document.getElementById('saveInfo').textContent = '가져오기 실패: 이 분석기의 내보내기 파일이 아닙니다'; return; }
-      const stores = safeGetStores();
+      if (!incoming || typeof incoming !== 'object') { info('복원 실패: 이 분석기의 백업 파일이 아닙니다'); return; }
       const dup = Object.keys(incoming).filter(n => stores[n]);
-      if (dup.length > 0 && !confirm('동일한 점포명 ' + dup.length + '건(' + dup.slice(0,3).join(', ') + (dup.length > 3 ? ' 외' : '') + ')이 이미 있습니다. 가져온 데이터로 덮어쓸까요?')) return;
+      if (dup.length > 0 && !confirm('동일한 점포명 ' + dup.length + '건이 이미 있습니다. 백업 데이터로 덮어쓸까요?')) return;
       let count = 0;
-      Object.keys(incoming).forEach(n => {
-        const st = incoming[n];
-        if (st && st.values) { stores[n] = st; count++; }
-      });
-      localStorage.setItem(STORE_KEY, JSON.stringify(stores));
+      Object.keys(incoming).forEach(n => { const st = incoming[n]; if (st && st.values) { stores[n] = st; count++; } });
+      saveLocalCache();
       refreshStoreList('');
-      document.getElementById('saveInfo').textContent = count + '개 점포 데이터를 가져왔습니다. 목록에서 선택 후 불러오세요.';
-    } catch (e) {
-      document.getElementById('saveInfo').textContent = '가져오기 실패: 파일을 읽을 수 없습니다';
-    }
+      if (getSyncUrl()) {
+        info(count + '개 점포 복원 — 시트에 반영 중…');
+        try {
+          const r = await sheetPost({ action: 'upload', stores });
+          info(r && r.ok ? count + '개 점포를 복원하고 시트에 반영했습니다' : count + '개 점포 복원 (시트 반영 실패 — 새로고침 후 재시도)');
+        } catch (e) { info(count + '개 점포 복원 (시트 통신 실패 — 이 기기에만 반영됨)'); }
+      } else {
+        info(count + '개 점포 데이터를 복원했습니다');
+      }
+    } catch (e) { info('복원 실패: 파일을 읽을 수 없습니다'); }
   };
   reader.readAsText(file, 'utf-8');
 }
-try { refreshStoreList(''); } catch (e) {}
+
+// ===== 공유 링크 (점포 데이터를 URL에 담아 전달) =====
+function b64urlEncode(str) { return btoa(unescape(encodeURIComponent(str))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); }
+function b64urlDecode(str) { str = str.replace(/-/g, '+').replace(/_/g, '/'); while (str.length % 4) str += '='; return decodeURIComponent(escape(atob(str))); }
+function copyText(txt, okMsg) {
+  const done = () => info(okMsg);
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(txt).then(done).catch(() => fallbackCopy(txt, done));
+  } else fallbackCopy(txt, done);
+}
+function fallbackCopy(txt, done) {
+  const ta = document.createElement('textarea');
+  ta.value = txt; ta.style.position = 'fixed'; ta.style.opacity = '0';
+  document.body.appendChild(ta); ta.select();
+  try { document.execCommand('copy'); done(); } catch (e) { prompt('아래 링크를 복사하세요', txt); }
+  ta.remove();
+}
+function shareStore() {
+  const sel = document.getElementById('storeList').value;
+  let st, label;
+  if (sel) {
+    st = stores[sel];
+    if (!st) { info('공유할 저장 데이터를 찾을 수 없습니다'); return; }
+    label = sel;
+  } else {
+    st = collectState();
+    label = (document.getElementById('storeName').value || '').trim() || '이름 없는 점포';
+  }
+  const payload = { app: 'pascucci-roi', v: 1, name: label, store: st };
+  const url = location.href.split('#')[0] + '#share=' + b64urlEncode(JSON.stringify(payload));
+  copyText(url, "'" + label + "' 공유 링크를 복사했습니다. 상대방이 열면 해당 데이터가 자동 적용됩니다.");
+}
+function loadSharedFromHash() {
+  if (!location.hash || location.hash.indexOf('#share=') !== 0) return false;
+  try {
+    const payload = JSON.parse(b64urlDecode(location.hash.slice(7)));
+    if (payload.app !== 'pascucci-roi' || !payload.store || !payload.store.values) return false;
+    applyState(payload.store);
+    info("'" + (payload.name || '공유 점포') + "' 공유 데이터를 열었습니다. 내 목록에 보관하려면 [현재 점포 저장]을 누르세요.");
+    return true;
+  } catch (e) {
+    info('공유 링크를 해석할 수 없습니다 (링크가 잘렸는지 확인하세요)');
+    return false;
+  }
+}
+
+// ===== 초기화: 시트 자동 연결 =====
+try {
+  const savedUrl = localStorage.getItem(SYNC_KEY);
+  if (savedUrl) document.getElementById('syncUrl').value = savedUrl;
+} catch (e) {}
 calc();
+const isShared = loadSharedFromHash();
+refreshFromSheet(true).then(() => { if (!isShared && !getSyncUrl()) info('점포명 기준으로 저장됩니다. 시트 URL 연결 시 모든 기기에서 공유됩니다.'); });
 </script>
 </body>
 </html>
