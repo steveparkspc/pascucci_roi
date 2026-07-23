@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PASCUCCI ROI 분석기 — 옵션</title>
+<style>
+  @font-face { font-family: 'Pretendard'; src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/pretendard@1.0/Pretendard-Regular.woff2') format('woff2'); font-weight: 400; font-display: swap; }
+  @font-face { font-family: 'Pretendard'; src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/pretendard@1.0/Pretendard-SemiBold.woff2') format('woff2'); font-weight: 600; font-display: swap; }
+  @font-face { font-family: 'Pretendard'; src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/pretendard@1.0/Pretendard-Bold.woff2') format('woff2'); font-weight: 700; font-display: swap; }
+  :root {
+    --pas-gold: #AA986C; --pas-gold-deep: #8A7950; --pas-gold-soft: #F3EEE2;
+    --espresso: #1C1917; --cream: #F7F5F0; --card: #FFFFFF;
+    --ink: #26211C; --sub: #7C7468; --line: #E7E1D5;
+    --good: #1E6B44; --bad: #A6192E;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Pretendard', 'Malgun Gothic', '맑은 고딕', sans-serif; background: var(--cream); color: var(--ink); padding: 24px; line-height: 1.5; }
+  .container { max-width: 860px; margin: 0 auto; }
+  header { background: var(--espresso); border-radius: 12px; padding: 20px 24px; margin-bottom: 20px; border-bottom: 4px solid var(--pas-gold); }
+  header h1 { font-size: 17px; color: #fff; font-weight: 700; }
+  header .sub { color: #9B917F; font-size: 12.5px; margin-top: 3px; }
+  header a { color: var(--pas-gold); font-size: 13px; text-decoration: none; font-weight: 600; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 20px; margin-bottom: 16px; }
+  .card h2 { font-size: 15px; font-weight: 700; margin-bottom: 6px; color: var(--espresso); display: flex; align-items: center; gap: 8px; }
+  .card h2::before { content: ""; width: 4px; height: 15px; background: var(--pas-gold); border-radius: 2px; }
+  .desc { font-size: 12px; color: var(--sub); line-height: 1.7; margin-bottom: 14px; }
+  .desc b { color: var(--pas-gold-deep); }
+  .field { display: flex; align-items: center; gap: 8px; margin-bottom: 9px; }
+  .field label { flex: 0 0 170px; font-size: 13px; color: #46362E; }
+  .field label small { display: block; color: var(--sub); font-size: 11px; }
+  .field input, .field select { flex: 1; min-width: 0; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; font-size: 14px; font-family: inherit; }
+  .field input[type=number] { text-align: right; }
+  .field input:focus, .field select:focus { outline: 2px solid var(--pas-gold-deep); outline-offset: -1px; }
+  .field .unit { flex: 0 0 34px; font-size: 12px; color: var(--sub); }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+  .btn { border: 1px solid var(--pas-gold-deep); background: #fff; color: var(--pas-gold-deep); border-radius: 6px; padding: 8px 14px; font-size: 13px; cursor: pointer; font-family: inherit; font-weight: 600; }
+  .btn:hover { background: var(--espresso); border-color: var(--espresso); color: var(--pas-gold); }
+  .btn.ghost { border-color: var(--line); color: var(--sub); }
+  .btn.danger { border-color: var(--bad); color: var(--bad); }
+  .btn.danger:hover { background: var(--bad); border-color: var(--bad); color: #fff; }
+  .status { font-size: 12.5px; margin-top: 10px; color: var(--sub); }
+  .status.ok { color: var(--good); font-weight: 600; }
+  .status.err { color: var(--bad); font-weight: 600; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0 24px; }
+  @media (max-width: 680px) { .grid2 { grid-template-columns: 1fr; } .field label { flex-basis: 150px; } body { padding: 12px; } }
+  .subsec { font-size: 12px; font-weight: 700; color: var(--pas-gold-deep); margin: 14px 0 8px; padding-bottom: 5px; border-bottom: 1px solid var(--line); }
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <h1>옵션 설정</h1>
+    <div class="sub">PASCUCCI 점포 ROI 분석기 — 시트 연동 · 접속 키 · 프리셋 관리</div>
+    <div style="margin-top:10px;"><a href="./">&larr; 분석기로 돌아가기</a></div>
+  </header>
+
+  <!-- ===== 접속 키 / 시트 연동 ===== -->
+  <div class="card">
+    <h2>Google 시트 연동 · 접속 키</h2>
+    <div class="desc">
+      점포 데이터는 팀 공용 Google 시트에 자동 저장됩니다. 시트 보호를 위해 <b>접속 키</b>가 맞는 요청만 처리되며,
+      키는 이 기기에만 저장되고 페이지 소스에 노출되지 않습니다. <b>기기마다 최초 1회</b> 팀 접속 키를 입력하세요.
+    </div>
+    <div class="field"><label>접속 키 <small>팀 공유 암호 (Apps Script의 ACCESS_KEY와 동일해야 함)</small></label><input type="password" id="accessKey" placeholder="팀 접속 키 입력"></div>
+    <div class="field"><label>시트 웹 앱 URL <small>비워두면 기본 팀 시트 사용</small></label><input type="text" id="syncUrl" placeholder="기본 시트 사용 중 — 교체 시에만 입력"></div>
+    <div class="row">
+      <button class="btn" onclick="saveConn()">저장</button>
+      <button class="btn" onclick="testConn()">연결 테스트</button>
+      <button class="btn ghost" onclick="resetConn()">기본값 복원</button>
+    </div>
+    <div class="status" id="connStatus">-</div>
+  </div>
+
+  <!-- ===== 프리셋 관리 ===== -->
+  <div class="card">
+    <h2>프리셋 관리 (임차조건 · 초기 투자금)</h2>
+    <div class="desc">
+      메인 화면 상단의 프리셋 버튼을 추가·수정합니다. 저장하면 시트를 통해 <b>모든 기기에 공유</b>됩니다.
+      입력하지 않은 항목은 표준점(40평) 값이 기본 적용됩니다.
+    </div>
+    <div class="field"><label>프리셋 선택</label>
+      <select id="presetSel" onchange="pickPreset()"><option value="">+ 새 프리셋 만들기</option></select>
+    </div>
+    <div class="field"><label>프리셋 이름 (버튼명)</label><input type="text" id="pName" placeholder="예: 특수입지 SIS (20평)"></div>
+
+    <div class="grid2">
+      <div>
+        <div class="subsec">임차조건</div>
+        <div class="field"><label>면적</label><input type="number" id="f_area" placeholder="40"><span class="unit">평</span></div>
+        <div class="field"><label>보증금</label><input type="number" id="f_storeDeposit" placeholder="0"><span class="unit">만원</span></div>
+        <div class="field"><label>권리금</label><input type="number" id="f_keymoney" placeholder="0"><span class="unit">만원</span></div>
+        <div class="field"><label>임차 방식</label>
+          <select id="f_rentMode"><option value="fixed">고정 임대료</option><option value="pct">매출 연동 (정률)</option></select>
+        </div>
+        <div class="field"><label>월세 (고정)</label><input type="number" id="f_rent" placeholder="400"><span class="unit">만원</span></div>
+        <div class="field"><label>임차 요율 (정률)</label><input type="number" id="f_rentRate" placeholder="15"><span class="unit">%</span></div>
+        <div class="field"><label>최소보장 임차료</label><input type="number" id="f_mgRent" placeholder="0"><span class="unit">만원</span></div>
+        <div class="field"><label>관리비 (월)</label><input type="number" id="f_mgmtFee" placeholder="50"><span class="unit">만원</span></div>
+      </div>
+      <div>
+        <div class="subsec">초기 투자금</div>
+        <div class="field"><label>계약이행보증금</label><input type="number" id="f_hqDeposit" placeholder="1000"><span class="unit">만원</span></div>
+        <div class="field"><label>개점비</label><input type="number" id="f_hqOpening" placeholder="1100"><span class="unit">만원</span></div>
+        <div class="field"><label>디자인 설계·매뉴얼비</label><input type="number" id="f_designFee" placeholder="330"><span class="unit">만원</span></div>
+        <div class="field"><label>교육비</label><input type="number" id="f_training" placeholder="165"><span class="unit">만원</span></div>
+        <div class="field"><label>인테리어</label><input type="number" id="f_interior" placeholder="9900"><span class="unit">만원</span></div>
+        <div class="field"><label>간판(SIGN류)</label><input type="number" id="f_signage" placeholder="1100"><span class="unit">만원</span></div>
+        <div class="field"><label>장비/가구류</label><input type="number" id="f_equipment" placeholder="11330"><span class="unit">만원</span></div>
+        <div class="field"><label>최초공급 상품비용</label><input type="number" id="f_firstGoods" placeholder="550"><span class="unit">만원</span></div>
+        <div class="field"><label>기타</label><input type="number" id="f_etcInvest" placeholder="0"><span class="unit">만원</span></div>
+      </div>
+    </div>
+
+    <div class="row">
+      <button class="btn" onclick="savePreset()">프리셋 저장</button>
+      <button class="btn danger" onclick="deletePreset()">삭제</button>
+    </div>
+    <div class="status" id="presetStatus">-</div>
+  </div>
+</div>
+
+<script>
+const DEFAULT_SYNC_URL = 'https://script.google.com/macros/s/AKfycbwWAFz6VLQfmbOBbv7XjGlBaY4CkoVlCaccK4WGDybQ5QYUbcFE9wKnXWgaXhpn9H_QYw/exec';
+const SYNC_KEY = 'pascucciRoiSyncUrl';
+const ACCESS_KEY_STORE = 'pascucciRoiAccessKey';
+const PRESET_STORE = 'pascucciRoiPresets';
+const RESERVED = '__presets__';
+const FIELD_IDS = ['area','storeDeposit','keymoney','rentMode','rent','rentRate','mgRent','mgmtFee',
+                   'hqDeposit','hqOpening','designFee','training','interior','signage','equipment','firstGoods','etcInvest'];
+let customPresets = {};
+
+const $ = id => document.getElementById(id);
+function getUrl() {
+  const u = ($('syncUrl').value || '').trim();
+  if (u.indexOf('https://script.google.com/') === 0) return u;
+  return DEFAULT_SYNC_URL;
+}
+function getKey() { return ($('accessKey').value || '').trim(); }
+function setStatus(id, msg, cls) { const el = $(id); el.textContent = msg; el.className = 'status' + (cls ? ' ' + cls : ''); }
+
+function saveConn() {
+  try {
+    localStorage.setItem(ACCESS_KEY_STORE, getKey());
+    const u = ($('syncUrl').value || '').trim();
+    if (u) localStorage.setItem(SYNC_KEY, u); else localStorage.removeItem(SYNC_KEY);
+    setStatus('connStatus', '저장 완료 — 이 기기에 적용되었습니다. 연결 테스트로 확인하세요.', 'ok');
+  } catch (e) { setStatus('connStatus', '저장 실패: 브라우저 저장소를 사용할 수 없습니다', 'err'); }
+}
+function resetConn() {
+  $('syncUrl').value = '';
+  try { localStorage.removeItem(SYNC_KEY); } catch (e) {}
+  setStatus('connStatus', '기본 팀 시트로 복원되었습니다', 'ok');
+}
+async function testConn() {
+  setStatus('connStatus', '연결 확인 중…');
+  try {
+    const res = await fetch(getUrl() + '?key=' + encodeURIComponent(getKey()));
+    const data = await res.json();
+    if (data && data.error === 'unauthorized') setStatus('connStatus', '접속 키가 올바르지 않습니다', 'err');
+    else if (data && data.ok) setStatus('connStatus', '연결 성공 — 점포 ' + Object.keys(data.stores || {}).filter(n => n.indexOf('__') !== 0).length + '건 확인', 'ok');
+    else setStatus('connStatus', '연결 실패: ' + (data && data.error || '응답 오류'), 'err');
+  } catch (e) { setStatus('connStatus', '연결 실패: URL·네트워크를 확인하세요 (로컬 file:// 에서는 차단됩니다)', 'err'); }
+}
+
+// ===== 프리셋 관리 =====
+function loadLocalPresets() {
+  try { customPresets = JSON.parse(localStorage.getItem(PRESET_STORE)) || {}; } catch (e) { customPresets = {}; }
+  renderSel('');
+}
+function renderSel(selected) {
+  const sel = $('presetSel');
+  sel.innerHTML = '<option value="">+ 새 프리셋 만들기</option>';
+  Object.keys(customPresets).sort().forEach(n => {
+    const o = document.createElement('option');
+    o.value = n; o.textContent = n;
+    if (n === selected) o.selected = true;
+    sel.appendChild(o);
+  });
+}
+function pickPreset() {
+  const n = $('presetSel').value;
+  FIELD_IDS.forEach(f => { $('f_' + f).value = ''; });
+  $('pName').value = n;
+  if (!n) return;
+  const fields = (customPresets[n] || {}).fields || {};
+  FIELD_IDS.forEach(f => { if (fields[f] !== undefined) $('f_' + f).value = fields[f]; });
+}
+async function pushPresetsToSheet() {
+  try {
+    const res = await fetch(getUrl(), { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: 'save', key: getKey() || (localStorage.getItem(ACCESS_KEY_STORE) || ''), name: RESERVED,
+        store: { ts: new Date().toISOString().slice(0, 16).replace('T', ' '), presets: customPresets, values: {} } }) });
+    const data = await res.json();
+    if (data && data.error === 'unauthorized') return '시트 반영 거부(접속 키 확인)';
+    return data && data.ok ? null : '시트 반영 실패';
+  } catch (e) { return '시트 통신 실패 (이 기기에는 저장됨)'; }
+}
+async function savePreset() {
+  const name = ($('pName').value || '').trim();
+  if (!name) { setStatus('presetStatus', '프리셋 이름을 입력하세요', 'err'); return; }
+  if (name.indexOf('__') === 0) { setStatus('presetStatus', "'__'로 시작하는 이름은 사용할 수 없습니다", 'err'); return; }
+  const fields = {};
+  FIELD_IDS.forEach(f => { const val = $('f_' + f).value; if (val !== '' && val !== null) fields[f] = val; });
+  customPresets[name] = { fields };
+  try { localStorage.setItem(PRESET_STORE, JSON.stringify(customPresets)); } catch (e) {}
+  renderSel(name);
+  setStatus('presetStatus', "'" + name + "' 저장 중…");
+  const err = await pushPresetsToSheet();
+  setStatus('presetStatus', err ? "'" + name + "' 저장됨 — " + err : "'" + name + "' 저장 완료 — 모든 기기의 메인 화면에 버튼이 추가됩니다", err ? 'err' : 'ok');
+}
+async function deletePreset() {
+  const n = $('presetSel').value;
+  if (!n) { setStatus('presetStatus', '삭제할 프리셋을 선택하세요', 'err'); return; }
+  if (!confirm("'" + n + "' 프리셋을 삭제할까요? (모든 기기에서 제거됩니다)")) return;
+  delete customPresets[n];
+  try { localStorage.setItem(PRESET_STORE, JSON.stringify(customPresets)); } catch (e) {}
+  renderSel('');
+  pickPreset();
+  const err = await pushPresetsToSheet();
+  setStatus('presetStatus', err ? "'" + n + "' 삭제됨 — " + err : "'" + n + "' 삭제 완료 (시트 반영)", err ? 'err' : 'ok');
+}
+
+// ===== 초기화 =====
+try {
+  $('accessKey').value = localStorage.getItem(ACCESS_KEY_STORE) || '';
+  const u = localStorage.getItem(SYNC_KEY);
+  if (u && u !== DEFAULT_SYNC_URL) $('syncUrl').value = u;
+} catch (e) {}
+loadLocalPresets();
+// 시트의 최신 프리셋 자동 로드
+(async () => {
+  try {
+    const res = await fetch(getUrl() + '?key=' + encodeURIComponent(localStorage.getItem(ACCESS_KEY_STORE) || ''));
+    const data = await res.json();
+    if (data && data.ok && data.stores && data.stores[RESERVED] && data.stores[RESERVED].presets) {
+      customPresets = data.stores[RESERVED].presets;
+      localStorage.setItem(PRESET_STORE, JSON.stringify(customPresets));
+      renderSel($('presetSel').value || '');
+    }
+  } catch (e) {}
+})();
+</script>
+</body>
+</html>

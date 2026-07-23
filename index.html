@@ -190,10 +190,9 @@
       <input type="file" id="importFile" accept=".json,application/json" style="display:none;" onchange="importStores(this)">
       <span class="saved-info" id="saveInfo">-</span>
     </div>
-    <div class="toolbar">
-      <span style="font-size:12px;color:var(--sub);white-space:nowrap;">Google 시트 연동</span>
-      <input type="text" id="syncUrl" placeholder="Apps Script 웹 앱 URL — 입력 시 저장·수정이 시트에 자동 반영됩니다" style="flex:1;min-width:220px;padding:7px 9px;border:1px solid var(--line);border-radius:6px;font-size:12px;font-family:inherit;" onchange="connectSheet()">
-      <span class="saved-info" id="syncState">미연결 (이 기기에만 저장)</span>
+    <div class="toolbar" style="border-top:none;padding-top:0;margin-top:2px;">
+      <span class="saved-info" id="syncState" style="margin-left:0;">시트 연결 확인 중…</span>
+      <input type="hidden" id="syncUrl" value="">
     </div>
   </div>
 
@@ -202,7 +201,7 @@
     <div>
       <div class="card">
         <h2>초기 투자금 <span class="cap">단위: 만원 · 부가세 포함 기준</span></h2>
-        <div class="preset-row">
+        <div class="preset-row" id="presetRow">
           <button class="preset-btn" onclick="loadPreset('standard')">표준점 (40평)</button>
           <button class="preset-btn" onclick="loadPreset('small')">소형점 (15평·환산)</button>
           <button class="preset-btn ghost" onclick="loadPreset('reset')">초기화</button>
@@ -368,7 +367,7 @@
           · 실제 의사결정 시 입지 권리(임차권 보호), 상권 트렌드, 경쟁점 밀도 등 정성요소 반드시 병행.
         </div>
       </div>
-      <footer>PASCUCCI 점포개발팀 · 내부 검토용 시뮬레이션 (대외 배포 금지)</footer>
+      <footer><a href="pascucci-roi-options.html" style="color:var(--pas-gold-deep);font-weight:600;text-decoration:none;">&#9881; 옵션 설정 (시트 연동 &middot; 접속 키 &middot; 프리셋 관리)</a>&nbsp;&nbsp;&middot;&nbsp;&nbsp;PASCUCCI 점포개발팀 · 내부 검토용 시뮬레이션 (대외 배포 금지)</footer>
     </div>
   </div>
 </div>
@@ -662,6 +661,30 @@ function loadPreset(name) {
   Object.keys(p).forEach(k => { const el = document.getElementById(k); if (el) el.value = p[k]; });
   calc();
 }
+function loadCustomPreset(name) {
+  const cp = customPresets[name];
+  if (!cp) return;
+  const merged = Object.assign({}, presets.standard, cp.fields || {});
+  Object.keys(merged).forEach(k => { const el = document.getElementById(k); if (el) el.value = merged[k]; });
+  calc();
+  info("'" + name + "' 프리셋을 적용했습니다");
+}
+function renderPresetButtons() {
+  const row = document.getElementById('presetRow');
+  if (!row) return;
+  row.innerHTML = '';
+  const add = (label, fn, ghost) => {
+    const b = document.createElement('button');
+    b.className = 'preset-btn' + (ghost ? ' ghost' : '');
+    b.textContent = label;
+    b.onclick = fn;
+    row.appendChild(b);
+  };
+  add('표준점 (40평)', () => loadPreset('standard'));
+  add('소형점 (15평·환산)', () => loadPreset('small'));
+  Object.keys(customPresets).sort().forEach(n => add(n, () => loadCustomPreset(n)));
+  add('초기화', () => loadPreset('reset'), true);
+}
 
 // ===== 비고 셀 편집 기능 =====
 document.querySelectorAll('.pnl td.rmk').forEach((el, i) => {
@@ -676,6 +699,11 @@ document.querySelectorAll('.pnl td.rmk').forEach((el, i) => {
 // 미연결 시: 이 브라우저(localStorage)에만 저장 (오프라인 폴백)
 const STORE_KEY = 'pascucciRoiStores';
 const SYNC_KEY = 'pascucciRoiSyncUrl';
+const ACCESS_KEY_STORE = 'pascucciRoiAccessKey';   // 접속 키 (옵션 페이지에서 기기별 1회 입력)
+const PRESET_STORE = 'pascucciRoiPresets';
+const RESERVED = '__presets__';
+let customPresets = {};
+const DEFAULT_SYNC_URL = 'https://script.google.com/macros/s/AKfycbwWAFz6VLQfmbOBbv7XjGlBaY4CkoVlCaccK4WGDybQ5QYUbcFE9wKnXWgaXhpn9H_QYw/exec';
 let stores = {};          // 메모리상 점포 데이터 (시트 or 로컬)
 let sheetConnected = false;
 
@@ -683,7 +711,14 @@ function localCache() { try { return JSON.parse(localStorage.getItem(STORE_KEY))
 function saveLocalCache() { try { localStorage.setItem(STORE_KEY, JSON.stringify(stores)); } catch (e) {} }
 function getSyncUrl() {
   const url = (document.getElementById('syncUrl').value || '').trim();
-  return url.indexOf('https://script.google.com/') === 0 ? url : null;
+  if (url.indexOf('https://script.google.com/') === 0) return url;
+  if (!url && DEFAULT_SYNC_URL) return DEFAULT_SYNC_URL;   // 미입력 시 기본 시트 사용
+  return null;
+}
+function resetSyncUrl() {
+  document.getElementById('syncUrl').value = '';
+  try { localStorage.removeItem(SYNC_KEY); } catch (e) {}
+  refreshFromSheet();
 }
 function setSyncState(msg, ok) {
   const el = document.getElementById('syncState');
@@ -695,7 +730,7 @@ function info(msg) { document.getElementById('saveInfo').textContent = msg; }
 function refreshStoreList(selected) {
   const sel = document.getElementById('storeList');
   sel.innerHTML = '<option value="">저장된 점포 선택…</option>';
-  Object.keys(stores).sort().forEach(name => {
+  Object.keys(stores).filter(n => n.indexOf('__') !== 0).sort().forEach(name => {
     const opt = document.createElement('option');
     opt.value = name;
     opt.textContent = name + ' (' + (stores[name].ts || '') + ')';
@@ -723,12 +758,15 @@ function nowTs() {
   const n = new Date();
   return n.getFullYear().toString().slice(2) + '/' + String(n.getMonth()+1).padStart(2,'0') + '/' + String(n.getDate()).padStart(2,'0') + ' ' + String(n.getHours()).padStart(2,'0') + ':' + String(n.getMinutes()).padStart(2,'0');
 }
+function getAccessKey() { try { return localStorage.getItem(ACCESS_KEY_STORE) || ''; } catch (e) { return ''; } }
 async function sheetPost(body) {
   const url = getSyncUrl();
   if (!url) return null;
+  body.key = getAccessKey();
   const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(body) });
   return await res.json();
 }
+function keyErrorGuide() { setSyncState('접속 키 필요 — 하단 [옵션 설정]에서 팀 접속 키를 입력하세요', false); }
 async function saveStore() {
   const name = (document.getElementById('storeName').value || '').trim() || '이름 없는 점포';
   const st = Object.assign({ ts: nowTs() }, collectState());
@@ -740,6 +778,7 @@ async function saveStore() {
     try {
       const r = await sheetPost({ action: 'save', name, store: st });
       if (r && r.ok) { info("'" + name + "' 시트에 저장 완료 — 다른 기기에서 바로 확인 가능합니다"); setSyncState('시트 연결됨 · 최근 저장 ' + st.ts, true); }
+      else if (r && r.error === 'unauthorized') { info("'" + name + "' 시트 저장 거부 — 접속 키를 확인하세요 (이 기기에는 저장됨)"); keyErrorGuide(); }
       else info("'" + name + "' 시트 저장 실패(" + (r && r.error || '응답 오류') + ") — 이 기기에는 저장되었습니다");
     } catch (e) {
       info("'" + name + "' 시트 통신 실패 — 이 기기에는 저장되었습니다. 네트워크 확인 후 다시 저장하세요");
@@ -785,14 +824,24 @@ async function refreshFromSheet(silent) {
   if (!silent) info('시트에서 최신 데이터를 불러오는 중…');
   setSyncState('시트 연결 중…');
   try {
-    const res = await fetch(url);
+    const res = await fetch(url + (url.indexOf('?') >= 0 ? '&' : '?') + 'key=' + encodeURIComponent(getAccessKey()));
     const data = await res.json();
+    if (data && data.error === 'unauthorized') {
+      stores = localCache(); refreshStoreList(''); keyErrorGuide();
+      if (!silent) info('시트 접속이 거부되었습니다. 하단 [옵션 설정]에서 접속 키를 입력하세요.');
+      return;
+    }
     if (!data.ok || typeof data.stores !== 'object') throw new Error(data.error || '응답 오류');
     stores = data.stores;
+    if (stores[RESERVED] && stores[RESERVED].presets) {   // 시트에 저장된 커스텀 프리셋 반영
+      customPresets = stores[RESERVED].presets;
+      try { localStorage.setItem(PRESET_STORE, JSON.stringify(customPresets)); } catch (e2) {}
+      renderPresetButtons();
+    }
     sheetConnected = true;
     saveLocalCache();
     refreshStoreList(document.getElementById('storeList').value || '');
-    const n = Object.keys(stores).length;
+    const n = Object.keys(stores).filter(k => k.indexOf('__') !== 0).length;
     setSyncState('시트 연결됨 · 점포 ' + n + '건', true);
     if (!silent) info('시트에서 ' + n + '개 점포를 불러왔습니다 (모든 기기 공통)');
   } catch (e) {
@@ -904,11 +953,13 @@ function loadSharedFromHash() {
 // ===== 초기화: 시트 자동 연결 =====
 try {
   const savedUrl = localStorage.getItem(SYNC_KEY);
-  if (savedUrl) document.getElementById('syncUrl').value = savedUrl;
-} catch (e) {}
+  if (savedUrl && savedUrl !== DEFAULT_SYNC_URL) document.getElementById('syncUrl').value = savedUrl;
+  customPresets = JSON.parse(localStorage.getItem(PRESET_STORE)) || {};
+} catch (e) { customPresets = {}; }
+renderPresetButtons();
 calc();
 const isShared = loadSharedFromHash();
-refreshFromSheet(true).then(() => { if (!isShared && !getSyncUrl()) info('점포명 기준으로 저장됩니다. 시트 URL 연결 시 모든 기기에서 공유됩니다.'); });
+refreshFromSheet(true).then(() => { if (!isShared && !getSyncUrl()) info('점포명 기준으로 이 기기에 저장됩니다.'); });
 </script>
 </body>
 </html>
