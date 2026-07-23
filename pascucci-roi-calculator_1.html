@@ -1,0 +1,786 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PASCUCCI 점포 ROI 분석기</title>
+<style>
+  @font-face { font-family: 'Pretendard'; src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/pretendard@1.0/Pretendard-Thin.woff2') format('woff2'); font-weight: 100; font-display: swap; }
+  @font-face { font-family: 'Pretendard'; src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/pretendard@1.0/Pretendard-ExtraLight.woff2') format('woff2'); font-weight: 200; font-display: swap; }
+  @font-face { font-family: 'Pretendard'; src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/pretendard@1.0/Pretendard-Light.woff2') format('woff2'); font-weight: 300; font-display: swap; }
+  @font-face { font-family: 'Pretendard'; src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/pretendard@1.0/Pretendard-Regular.woff2') format('woff2'); font-weight: 400; font-display: swap; }
+  @font-face { font-family: 'Pretendard'; src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/pretendard@1.0/Pretendard-Medium.woff2') format('woff2'); font-weight: 500; font-display: swap; }
+  @font-face { font-family: 'Pretendard'; src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/pretendard@1.0/Pretendard-SemiBold.woff2') format('woff2'); font-weight: 600; font-display: swap; }
+  @font-face { font-family: 'Pretendard'; src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/pretendard@1.0/Pretendard-Bold.woff2') format('woff2'); font-weight: 700; font-display: swap; }
+  @font-face { font-family: 'Pretendard'; src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/pretendard@1.0/Pretendard-ExtraBold.woff2') format('woff2'); font-weight: 800; font-display: swap; }
+  @font-face { font-family: 'Pretendard'; src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/pretendard@1.0/Pretendard-Black.woff2') format('woff2'); font-weight: 900; font-display: swap; }
+  :root {
+    --pas-gold: #AA986C;
+    --pas-gold-deep: #8A7950;
+    --pas-gold-soft: #F3EEE2;
+    --espresso: #1C1917;
+    --cream: #F7F5F0;
+    --card: #FFFFFF;
+    --ink: #26211C;
+    --sub: #7C7468;
+    --line: #E7E1D5;
+    --tint: #F3EEE2;
+    --good: #1E6B44; --good-bg: #E9F3EC;
+    --mid: #A2711A;  --mid-bg: #FAF1DC;
+    --bad: #A6192E;  --bad-bg: #F8E7E9;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Pretendard', 'Malgun Gothic', '맑은 고딕', 'Apple SD Gothic Neo', -apple-system, sans-serif;
+    background: var(--cream); color: var(--ink); padding: 24px; line-height: 1.5;
+  }
+  .container { max-width: 1320px; margin: 0 auto; }
+  header {
+    background: var(--espresso); border-radius: 12px; padding: 24px 28px 20px;
+    margin-bottom: 20px; border-bottom: 4px solid var(--pas-gold); color: #EFEAE0;
+  }
+  header .logo { height: 30px; display: block; }
+  .app-title { font-size: 15px; font-weight: 700; margin-top: 12px; color: #fff; }
+  .subtitle { color: #9B917F; font-size: 12.5px; margin-top: 3px; font-weight: 300; }
+
+  .grid { display: grid; grid-template-columns: 430px 1fr; gap: 20px; }
+  @media (max-width: 1000px) { .grid { grid-template-columns: 1fr; } body { padding: 14px; } }
+
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 20px; margin-bottom: 16px; }
+  .card h2 { font-size: 15px; font-weight: 700; margin-bottom: 14px; color: var(--espresso); display: flex; align-items: center; gap: 8px; }
+  .card h2::before { content: ""; display: inline-block; width: 4px; height: 15px; background: var(--pas-gold); border-radius: 2px; }
+  .card .cap { font-size: 11.5px; color: var(--sub); font-weight: 400; margin-left: auto; }
+
+  .subsec { font-size: 12px; font-weight: 700; color: var(--pas-gold-deep); letter-spacing: 0.5px; margin: 16px 0 8px; padding-bottom: 5px; border-bottom: 1px solid var(--line); display: flex; align-items: center; justify-content: space-between; }
+  .subsec:first-of-type { margin-top: 4px; }
+  .subsec .sum { color: var(--sub); font-weight: 600; font-size: 12px; }
+
+  .preset-row { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
+  .preset-btn { border: 1px solid var(--pas-gold-deep); background: var(--card); color: var(--pas-gold-deep); border-radius: 6px; padding: 6px 12px; font-size: 12.5px; cursor: pointer; font-family: inherit; font-weight: 600; transition: background .15s, color .15s; }
+  .preset-btn:hover, .preset-btn:focus-visible { background: var(--espresso); border-color: var(--espresso); color: var(--pas-gold); outline: none; }
+  .preset-btn.ghost { border-color: var(--line); color: var(--sub); }
+  .preset-btn.ghost:hover { background: var(--sub); border-color: var(--sub); color:#fff; }
+  .mini-btn { border: 1px solid var(--pas-gold); background: var(--pas-gold-soft); color: var(--pas-gold-deep); border-radius: 5px; padding: 3px 9px; font-size: 11px; cursor: pointer; font-family: inherit; font-weight: 600; }
+  .mini-btn:hover { background: var(--pas-gold); color: #fff; }
+
+  .field { display: flex; align-items: center; gap: 8px; margin-bottom: 9px; }
+  .field label { flex: 1; font-size: 13px; color: #46362E; }
+  .field label small { display: block; color: var(--sub); font-size: 11px; line-height: 1.35; }
+  .field input, .field select { width: 118px; padding: 7px 9px; border: 1px solid var(--line); border-radius: 6px; font-size: 13.5px; text-align: right; font-family: inherit; background:#fff; color: var(--ink); }
+  .field input[type=text] { text-align: left; }
+  .field select { text-align: left; width: 140px; }
+  .field input:focus, .field select:focus { outline: 2px solid var(--pas-gold-deep); outline-offset: -1px; border-color: var(--pas-gold-deep); }
+  .field .unit { width: 34px; font-size: 12px; color: var(--sub); }
+  .field.linked label { color: var(--sub); }
+  .field .linkval { width: 118px; text-align: right; font-size: 13.5px; color: var(--espresso); font-weight: 600; padding: 7px 9px; background: #F5F1E7; border-radius: 6px; border: 1px dashed var(--line); }
+
+  .lease-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 18px; }
+  @media (max-width: 640px) { .lease-grid { grid-template-columns: 1fr; } }
+
+  .kpi-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
+  @media (max-width: 1150px) { .kpi-grid { grid-template-columns: repeat(3, 1fr); } }
+  @media (max-width: 640px) { .kpi-grid { grid-template-columns: repeat(2, 1fr); } }
+  .kpi { background: var(--tint); border-radius: 8px; padding: 13px 12px; border-left: 4px solid var(--pas-gold); }
+  .kpi .lbl { font-size: 11.5px; color: var(--sub); margin-bottom: 3px; }
+  .kpi .val { font-size: 21px; font-weight: 700; letter-spacing: -0.5px; color: var(--espresso); }
+  .kpi .note { font-size: 10.5px; color: var(--sub); margin-top: 2px; }
+  .kpi.k-good { background: var(--good-bg); border-left-color: var(--good); } .kpi.k-good .val { color: var(--good); }
+  .kpi.k-mid  { background: var(--mid-bg);  border-left-color: var(--mid); }  .kpi.k-mid .val  { color: var(--mid); }
+  .kpi.k-bad  { background: var(--bad-bg);  border-left-color: var(--bad); }  .kpi.k-bad .val  { color: var(--bad); }
+
+  .verdict { margin-top: 14px; border-radius: 8px; padding: 13px 15px; font-size: 13.5px; line-height: 1.65; }
+  .verdict.good { background: var(--good-bg); color: #14512F; }
+  .verdict.warn { background: var(--mid-bg); color: #6E4A0E; }
+  .verdict.bad  { background: var(--bad-bg); color: #7C1220; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { padding: 7px 9px; text-align: right; border-bottom: 1px solid var(--line); }
+  th { color: var(--sub); font-weight: 600; font-size: 12px; background: #F8F3EA; }
+  td:first-child, th:first-child { text-align: left; }
+  tr.hl td { font-weight: 700; background: var(--tint); }
+  .cell-good { color: var(--good); font-weight: 700; }
+  .cell-mid  { color: var(--mid);  font-weight: 700; }
+  .cell-bad  { color: var(--bad);  font-weight: 700; }
+
+  /* 손익계산서 (내부 표준 양식) */
+  .pnl { font-size: 12.8px; }
+  .pnl th, .pnl td { padding: 5.5px 8px; border: 1px solid var(--line); }
+  .pnl th { background: var(--espresso); color: #EFEAE0; font-weight: 600; text-align: center; }
+  .pnl td.cat { background: var(--pas-gold); font-weight: 800; text-align: center; color: #FFFFFF; vertical-align: middle; width: 52px; letter-spacing: 2px; border-color: #C4B48C; text-shadow: 0 1px 1px rgba(0,0,0,0.15); }
+  .pnl td.item { text-align: left; }
+  .pnl td.item.indent { padding-left: 18px; color: #4A423A; }
+  .pnl td.num { text-align: right; font-variant-numeric: tabular-nums; width: 120px; }
+  .pnl td.rate { text-align: right; width: 62px; color: var(--sub); font-variant-numeric: tabular-nums; }
+  .pnl td.rmk { text-align: left; color: var(--sub); font-size: 11.5px; width: 220px; }
+  .pnl td.rmk[contenteditable] { cursor: text; }
+  .pnl td.rmk[contenteditable]:hover { background: var(--pas-gold-soft); }
+  .pnl td.rmk[contenteditable]:focus { outline: 2px solid var(--pas-gold-deep); outline-offset: -2px; background: #fff; color: var(--ink); }
+  .toolbar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--line); }
+  .toolbar select { padding: 7px 9px; border: 1px solid var(--line); border-radius: 6px; font-size: 12.5px; font-family: inherit; background: #fff; color: var(--ink); min-width: 160px; }
+  .toolbar .saved-info { font-size: 11px; color: var(--sub); margin-left: auto; }
+  .pnl tr.sec td { background: #EFE9DB; font-weight: 700; }
+  .pnl tr.sec td.cat { background: var(--pas-gold); color: #FFFFFF; }
+  .pnl tr.sec td.cat { background: var(--pas-gold); }
+  .pnl tr.result td { background: var(--espresso); color: #F0EBDF; font-weight: 700; border-color: #3A342E; }
+  .pnl tr.result td.rmk { color: #B4AB99; }
+  .pnl-title { font-size: 14px; font-weight: 800; margin-bottom: 10px; color: var(--espresso); }
+  .pnl-title::before { content: "■ "; color: var(--pas-gold-deep); }
+
+  .table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .table-scroll .pnl { min-width: 620px; }
+  .table-scroll > table:not(.pnl) { min-width: 460px; }
+
+  @media (max-width: 640px) {
+    body { padding: 10px; }
+    header { padding: 18px 18px 14px; border-radius: 10px; }
+    header .logo { height: 24px; }
+    .card { padding: 14px; border-radius: 8px; }
+    .field input, .field select { font-size: 16px; width: 128px; padding: 9px 10px; } /* iOS 자동확대 방지 */
+    .field label { font-size: 13.5px; }
+    .preset-btn { padding: 9px 14px; font-size: 13px; }  /* 터치 타깃 확대 */
+    .mini-btn { padding: 6px 11px; font-size: 12px; }
+    .kpi .val { font-size: 18px; }
+    .kpi-grid { gap: 8px; }
+    .pnl { font-size: 12px; }
+    .pnl td.rmk { font-size: 10.5px; width: 150px; }
+    .verdict { font-size: 13px; }
+  }
+  .legend { font-size: 11.5px; color: var(--sub); margin-top: 8px; }
+  .notes { font-size: 12px; color: var(--sub); line-height: 1.8; }
+  .notes b { color: var(--pas-gold-deep); }
+  footer { margin-top: 8px; font-size: 11px; color: #ABA292; text-align: right; }
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <img class="logo" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAANMAAAAyCAYAAADGH+7+AAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAAyJpVFh0WE1MOmNvbS5hZG9iZS54bXAAAAAAADw/eHBhY2tldCBiZWdpbj0i77u/IiBpZD0iVzVNME1wQ2VoaUh6cmVTek5UY3prYzlkIj8+IDx4OnhtcG1ldGEgeG1sbnM6eD0iYWRvYmU6bnM6bWV0YS8iIHg6eG1wdGs9IkFkb2JlIFhNUCBDb3JlIDUuMy1jMDExIDY2LjE0NTY2MSwgMjAxMi8wMi8wNi0xNDo1NjoyNyAgICAgICAgIj4gPHJkZjpSREYgeG1sbnM6cmRmPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5LzAyLzIyLXJkZi1zeW50YXgtbnMjIj4gPHJkZjpEZXNjcmlwdGlvbiByZGY6YWJvdXQ9IiIgeG1sbnM6eG1wPSJodHRwOi8vbnMuYWRvYmUuY29tL3hhcC8xLjAvIiB4bWxuczp4bXBNTT0iaHR0cDovL25zLmFkb2JlLmNvbS94YXAvMS4wL21tLyIgeG1sbnM6c3RSZWY9Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC9zVHlwZS9SZXNvdXJjZVJlZiMiIHhtcDpDcmVhdG9yVG9vbD0iQWRvYmUgUGhvdG9zaG9wIENTNiAoV2luZG93cykiIHhtcE1NOkluc3RhbmNlSUQ9InhtcC5paWQ6OUU2QTQyNTU5ODU5MTFFRjg1Qzk4ODRENEYxNzQxNzMiIHhtcE1NOkRvY3VtZW50SUQ9InhtcC5kaWQ6OUU2QTQyNTY5ODU5MTFFRjg1Qzk4ODRENEYxNzQxNzMiPiA8eG1wTU06RGVyaXZlZEZyb20gc3RSZWY6aW5zdGFuY2VJRD0ieG1wLmlpZDo5RTZBNDI1Mzk4NTkxMUVGODVDOTg4NEQ0RjE3NDE3MyIgc3RSZWY6ZG9jdW1lbnRJRD0ieG1wLmRpZDo5RTZBNDI1NDk4NTkxMUVGODVDOTg4NEQ0RjE3NDE3MyIvPiA8L3JkZjpEZXNjcmlwdGlvbj4gPC9yZGY6UkRGPiA8L3g6eG1wbWV0YT4gPD94cGFja2V0IGVuZD0iciI/PpTa6ZoAAAfBSURBVHja7F1pjBVF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" alt="PASCUCCI">
+    <div class="app-title">점포 ROI 분석기</div>
+    <div class="subtitle">점포개발팀 내부 검토용 · 정보공개서 표준 투자비 기준 · 일평균 매출 → ROI · 회수기간 · 임차료율 · BEP · 시나리오</div>
+  </header>
+
+  <!-- ===== 임차조건 ===== -->
+  <div class="card">
+    <h2>임차조건 <span class="cap">보증금·권리금은 초기 투자금에, 월세·관리비는 월 손익에 자동 반영</span></h2>
+    <div class="lease-grid">
+      <div class="field"><label>점포명</label><input type="text" id="storeName" value="신규 후보점" oninput="calc()"><span class="unit"></span></div>
+      <div class="field"><label>면적 <small>전용 기준 권장</small></label><input type="number" inputmode="decimal" id="area" value="40" oninput="calc()"><span class="unit">평</span></div>
+      <div class="field"><label>보증금 <small>계약 종료 시 환급</small></label><input type="number" inputmode="decimal" id="storeDeposit" value="0" oninput="calc()"><span class="unit">만원</span></div>
+      <div class="field"><label>권리금</label><input type="number" inputmode="decimal" id="keymoney" value="0" oninput="calc()"><span class="unit">만원</span></div>
+      <div class="field"><label>임차 방식 <small>정률 계약 시 순매출(VAT 제외) 기준</small></label>
+        <select id="rentMode" onchange="calc()">
+          <option value="fixed" selected>고정 임대료</option>
+          <option value="pct">매출 연동 (정률)</option>
+        </select>
+      </div>
+      <div class="field" id="fld-rentFixed"><label>월세 (VAT 별도)</label><input type="number" inputmode="decimal" id="rent" value="400" oninput="calc()"><span class="unit">만원</span></div>
+      <div class="field" id="fld-rentRate" style="display:none;"><label>임차 요율 <small>순매출 대비 %</small></label><input type="number" inputmode="decimal" id="rentRate" value="15" step="0.1" oninput="calc()"><span class="unit">%</span></div>
+      <div class="field" id="fld-mgRent" style="display:none;"><label>최소보장 임차료 (M/G) <small>정률 임차료가 미달 시 적용되는 하한</small></label><input type="number" inputmode="decimal" id="mgRent" value="0" oninput="calc()"><span class="unit">만원</span></div>
+      <div class="field"><label>관리비 (월) <small>건물 관리비 · 임대차 계약 조건</small></label><input type="number" inputmode="decimal" id="mgmtFee" value="50" oninput="calc()"><span class="unit">만원</span></div>
+    </div>
+    <div class="toolbar">
+      <button class="preset-btn" onclick="saveStore()">현재 점포 저장</button>
+      <select id="storeList" aria-label="저장된 점포 선택"><option value="">저장된 점포 선택…</option></select>
+      <button class="preset-btn" onclick="loadStore()">불러오기</button>
+      <button class="preset-btn ghost" onclick="deleteStore()">삭제</button>
+      <button class="preset-btn ghost" onclick="exportStores()">내보내기</button>
+      <button class="preset-btn ghost" onclick="document.getElementById('importFile').click()">가져오기</button>
+      <input type="file" id="importFile" accept=".json,application/json" style="display:none;" onchange="importStores(this)">
+      <span class="saved-info" id="saveInfo">점포명 기준으로 이 브라우저에 저장됩니다</span>
+    </div>
+  </div>
+
+  <div class="grid">
+    <!-- ===== 좌측: 입력 ===== -->
+    <div>
+      <div class="card">
+        <h2>초기 투자금 <span class="cap">단위: 만원 · 부가세 포함 기준</span></h2>
+        <div class="preset-row">
+          <button class="preset-btn" onclick="loadPreset('standard')">표준점 (40평)</button>
+          <button class="preset-btn" onclick="loadPreset('small')">소형점 (15평·환산)</button>
+          <button class="preset-btn ghost" onclick="loadPreset('reset')">초기화</button>
+        </div>
+
+        <div class="subsec"><span>1. 임차</span><span class="sum" id="sub-lease">-</span></div>
+        <div class="field linked"><label>점포보증금 <small>임차조건 연동 · 환급성</small></label><div class="linkval" id="lv-deposit">-</div><span class="unit">만원</span></div>
+        <div class="field linked"><label>점포권리금 <small>임차조건 연동</small></label><div class="linkval" id="lv-keymoney">-</div><span class="unit">만원</span></div>
+
+        <div class="subsec"><span>2. 예치가맹금</span><span class="sum" id="sub-franchise">-</span></div>
+        <div class="field"><label>계약이행보증금 <small>VAT 대상 아님 · 환급성</small></label><input type="number" inputmode="decimal" id="hqDeposit" value="1000" oninput="calc()"><span class="unit">만원</span></div>
+        <div class="field"><label>개점비</label><input type="number" inputmode="decimal" id="hqOpening" value="1100" oninput="calc()"><span class="unit">만원</span></div>
+        <div class="field"><label>디자인 설계·매뉴얼비</label><input type="number" inputmode="decimal" id="designFee" value="330" oninput="calc()"><span class="unit">만원</span></div>
+        <div class="field"><label>교육비</label><input type="number" inputmode="decimal" id="training" value="165" oninput="calc()"><span class="unit">만원</span></div>
+
+        <div class="subsec"><span>3. 인테리어 및 장비</span><span style="display:flex;gap:8px;align-items:center;"><button class="mini-btn" onclick="applyAreaScale()">면적 기준 평당 환산</button><span class="sum" id="sub-facility">-</span></span></div>
+        <div class="field"><label>인테리어 <small id="hint-interior">평당 약 247.5만원 (40평 기준) · 외부공사/철거 미포함</small></label><input type="number" inputmode="decimal" id="interior" value="9900" oninput="calc()"><span class="unit">만원</span></div>
+        <div class="field"><label>간판(SIGN류) <small>전면 7m 1면 기준 · 어닝 별도</small></label><input type="number" inputmode="decimal" id="signage" value="1100" oninput="calc()"><span class="unit">만원</span></div>
+        <div class="field"><label>장비/가구류 <small id="hint-equipment">평당 약 283.3만원 (40평 기준)</small></label><input type="number" inputmode="decimal" id="equipment" value="11330" oninput="calc()"><span class="unit">만원</span></div>
+        <div class="field"><label>최초공급 상품비용 <small>초도물량 · 점포환경에 따라 유동</small></label><input type="number" inputmode="decimal" id="firstGoods" value="550" oninput="calc()"><span class="unit">만원</span></div>
+        <div class="field"><label>기타 <small>에어컨·전기증설·외부공사 등 별도 항목</small></label><input type="number" inputmode="decimal" id="etcInvest" value="0" oninput="calc()"><span class="unit">만원</span></div>
+
+        <div class="sumbox" style="margin-top:13px;border-top:2px solid var(--espresso);padding-top:11px;font-size:13px;">
+          <div class="row total" style="display:flex;justify-content:space-between;padding:2.5px 0;color:var(--espresso);font-weight:700;font-size:14.5px;"><span>합계 (총 투자금)</span><b id="s-total" style="color:var(--pas-gold-deep);">-</b></div>
+          <div class="row" style="display:flex;justify-content:space-between;padding:2.5px 0;color:var(--sub);"><span>· 환급성 (점포보증금 + 계약이행보증금)</span><span id="s-return">-</span></div>
+          <div class="row" style="display:flex;justify-content:space-between;padding:2.5px 0;color:var(--sub);"><span>· 실투자금 (ROI 분모)</span><span id="s-sunk">-</span></div>
+          <div class="row" style="display:flex;justify-content:space-between;padding:2.5px 0;color:var(--sub);"><span>· 평당 실투자금</span><span id="s-perpy">-</span></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>월 매출 / 비용</h2>
+        <div class="field"><label>일평균 매출 (총매출) <small>내부 성과분석 기준선: 1,400천원/일</small></label><input type="number" inputmode="decimal" id="dailySales" value="1400" oninput="calc()"><span class="unit">천원</span></div>
+        <div class="field"><label>월 영업일수</label><input type="number" inputmode="decimal" id="bizDays" value="30" oninput="calc()"><span class="unit">일</span></div>
+        <div class="field"><label>매출 입력 기준 <small>부가세 포함(총매출) 입력 시 순매출 = ÷1.1</small></label>
+          <select id="vatMode" onchange="calc()">
+            <option value="incl" selected>부가세 포함 (POS)</option>
+            <option value="excl">부가세 제외 (순매출)</option>
+          </select>
+        </div>
+        <div class="field"><label>원가율 <small>본사 공급가 기준 · 내부 실적치로 교체 요망</small></label><input type="number" inputmode="decimal" id="cogsRate" value="35" step="0.1" oninput="calc()"><span class="unit">%</span></div>
+        <div class="field linked"><label>월 임차료 <small>임차조건 연동 · 임차료율 12% 이하 권장</small></label><div class="linkval" id="lv-rent">-</div><span class="unit">만원</span></div>
+        <div class="field linked"><label>월 관리비 <small>임차조건 연동</small></label><div class="linkval" id="lv-mgmt">-</div><span class="unit">만원</span></div>
+        <div class="field"><label>월 인건비 <small>가맹대표 직접 운영 시 본인 인건비 포함 권장</small></label><input type="number" inputmode="decimal" id="labor" value="800" oninput="calc()"><span class="unit">만원</span></div>
+        <div class="field"><label>월 수도광열비 <small>전기·수도·가스 등</small></label><input type="number" inputmode="decimal" id="utility" value="100" oninput="calc()"><span class="unit">만원</span></div>
+        <div class="field"><label>월 통신비</label><input type="number" inputmode="decimal" id="comm" value="5" oninput="calc()"><span class="unit">만원</span></div>
+        <div class="field"><label>월 지급수수료 <small>보험 등</small></label><input type="number" inputmode="decimal" id="fees" value="9" oninput="calc()"><span class="unit">만원</span></div>
+        <div class="field"><label>로열티 (정률) <small>순매출 대비 · 정보공개서 영업 중 부담 기준</small></label><input type="number" inputmode="decimal" id="royaltyPct" value="2.5" step="0.1" oninput="calc()"><span class="unit">%</span></div>
+        <div class="field"><label>로열티 (정액)</label><input type="number" inputmode="decimal" id="royaltyFixed" value="0" oninput="calc()"><span class="unit">만원</span></div>
+        <div class="field"><label>소모품비율 <small>순매출 대비</small></label><input type="number" inputmode="decimal" id="suppliesRate" value="0.5" step="0.1" oninput="calc()"><span class="unit">%</span></div>
+        <div class="field"><label>카드수수료율</label><input type="number" inputmode="decimal" id="cardRate" value="1.2" step="0.1" oninput="calc()"><span class="unit">%</span></div>
+        <div class="field"><label>카드매출 비중</label><input type="number" inputmode="decimal" id="cardShare" value="99" oninput="calc()"><span class="unit">%</span></div>
+      </div>
+
+      <div class="card">
+        <h2>분석 설정</h2>
+        <div class="field"><label>감가상각 기간 <small>인테리어·장비 등 시설투자(⑤~⑧) 기준</small></label><input type="number" inputmode="decimal" id="depYears" value="5" oninput="calc()"><span class="unit">년</span></div>
+        <div class="field"><label>시나리오 매출 변동폭</label><input type="number" inputmode="decimal" id="scenarioPct" value="20" oninput="calc()"><span class="unit">±%</span></div>
+      </div>
+    </div>
+
+    <!-- ===== 우측: 결과 ===== -->
+    <div>
+      <div class="card">
+        <h2>핵심 지표 (기본 시나리오)</h2>
+        <div class="kpi-grid">
+          <div class="kpi" id="kpi-roi"><div class="lbl">연 ROI (감가제외)</div><div class="val" id="k-roi">-</div><div class="note">연 경상이익 / 실투자금</div></div>
+          <div class="kpi" id="kpi-pb"><div class="lbl">투자 회수기간</div><div class="val" id="k-pb">-</div><div class="note">Payback Period</div></div>
+          <div class="kpi" id="kpi-margin"><div class="lbl">경상이익률 (감가제외)</div><div class="val" id="k-margin">-</div><div class="note">월 경상이익 / 순매출</div></div>
+          <div class="kpi" id="kpi-rr"><div class="lbl">임차료율</div><div class="val" id="k-rr">-</div><div class="note">월 임차료 / 순매출</div></div>
+          <div class="kpi" id="kpi-bep"><div class="lbl">일 B.E.P (총매출)</div><div class="val" id="k-bep">-</div><div class="note" id="k-bep-note">감가상각 포함 기준</div></div>
+        </div>
+        <div class="verdict" id="verdict">-</div>
+      </div>
+
+      <div class="card">
+        <div class="pnl-title" id="pnl-title">손익 계산서 : 신규 후보점 (40평)</div>
+        <div class="table-scroll"><table class="pnl">
+          <thead>
+            <tr><th style="width:52px;">구분</th><th>항목</th><th>금액 (원)</th><th>비율</th><th>비  고</th></tr>
+          </thead>
+          <tbody>
+            <tr><td class="cat" rowspan="11">투자</td><td class="item">①건물보증금</td><td class="num" id="p-i1">-</td><td class="rate"></td><td class="rmk">계약 종료 시 환급</td></tr>
+            <tr><td class="item">②권리금</td><td class="num" id="p-i2">-</td><td class="rate"></td><td class="rmk"></td></tr>
+            <tr><td class="item">③가맹보증금 (계약이행보증금)</td><td class="num" id="p-i3">-</td><td class="rate"></td><td class="rmk">VAT 대상 아님 · 환급성</td></tr>
+            <tr><td class="item">④개점비+디자인설계+교육비</td><td class="num" id="p-i4">-</td><td class="rate"></td><td class="rmk">예치가맹금 (VAT 포함 환산)</td></tr>
+            <tr class="sec"><td class="item">소계 (①+②+③+④)</td><td class="num" id="p-is1">-</td><td class="rate"></td><td class="rmk"></td></tr>
+            <tr><td class="item">⑤인테리어</td><td class="num" id="p-i5">-</td><td class="rate"></td><td class="rmk" id="p-i5-rmk">평당 2,475천원 기준</td></tr>
+            <tr><td class="item">⑥장비</td><td class="num" id="p-i6">-</td><td class="rate"></td><td class="rmk">의탁자, 가구, 기계장비 포함</td></tr>
+            <tr><td class="item">⑦간판</td><td class="num" id="p-i7">-</td><td class="rate"></td><td class="rmk">간판 및 내부 사인물</td></tr>
+            <tr><td class="item">⑧기타</td><td class="num" id="p-i8">-</td><td class="rate"></td><td class="rmk">초도물량 포함</td></tr>
+            <tr class="sec"><td class="item">소계 (⑤+⑥+⑦+⑧)</td><td class="num" id="p-is2">-</td><td class="rate"></td><td class="rmk">냉난방·전기증설·보안·CCTV 제외</td></tr>
+            <tr class="sec"><td class="item">총계</td><td class="num" id="p-itot">-</td><td class="rate"></td><td class="rmk"></td></tr>
+
+            <tr class="sec"><td class="cat" rowspan="4">매출</td><td class="item">총매출 (월)</td><td class="num" id="p-gm">-</td><td class="rate"></td><td class="rmk"></td></tr>
+            <tr><td class="item">순매출 (월)</td><td class="num" id="p-nm">-</td><td class="rate"></td><td class="rmk">총매출 ÷ 1.1</td></tr>
+            <tr><td class="item">총매출 (일)</td><td class="num" id="p-gd">-</td><td class="rate"></td><td class="rmk" id="p-days-rmk">평균 월 30일 적용</td></tr>
+            <tr><td class="item">순매출 (일)</td><td class="num" id="p-nd">-</td><td class="rate"></td><td class="rmk"></td></tr>
+
+            <tr class="sec"><td class="cat">원가</td><td class="item">매출원가 (월)</td><td class="num" id="p-cogs">-</td><td class="rate" id="p-cogs-r">-</td><td class="rmk" id="p-cogs-rmk">원가율 적용</td></tr>
+            <tr class="sec"><td class="item" colspan="2">매출총이익</td><td class="num" id="p-gp">-</td><td class="rate" id="p-gp-r">-</td><td class="rmk"></td></tr>
+
+            <tr class="sec"><td class="item" colspan="2">일반관리비</td><td class="num" id="p-sga">-</td><td class="rate" id="p-sga-r">-</td><td class="rmk"></td></tr>
+            <tr><td class="cat" rowspan="9">판관비</td><td class="item indent">로열티</td><td class="num" id="p-roy">-</td><td class="rate" id="p-roy-r">-</td><td class="rmk" id="p-roy-rmk"></td></tr>
+            <tr><td class="item indent">인건비</td><td class="num" id="p-labor">-</td><td class="rate" id="p-labor-r">-</td><td class="rmk">가맹대표 직접 매장 운영</td></tr>
+            <tr><td class="item indent">수도광열비</td><td class="num" id="p-util">-</td><td class="rate" id="p-util-r">-</td><td class="rmk"></td></tr>
+            <tr><td class="item indent">통신비</td><td class="num" id="p-comm">-</td><td class="rate" id="p-comm-r">-</td><td class="rmk">현재 실비용 적용</td></tr>
+            <tr><td class="item indent">지급수수료</td><td class="num" id="p-fees">-</td><td class="rate" id="p-fees-r">-</td><td class="rmk">보험</td></tr>
+            <tr><td class="item indent">관리비</td><td class="num" id="p-mgmt">-</td><td class="rate" id="p-mgmt-r">-</td><td class="rmk">관리비 실비 (임차조건 연동)</td></tr>
+            <tr><td class="item indent">임차료</td><td class="num" id="p-rent">-</td><td class="rate" id="p-rent-r">-</td><td class="rmk" id="p-rent-rmk">임차조건 연동</td></tr>
+            <tr><td class="item indent">소모품비</td><td class="num" id="p-sup">-</td><td class="rate" id="p-sup-r">-</td><td class="rmk" id="p-sup-rmk"></td></tr>
+            <tr><td class="item indent">카드수수료</td><td class="num" id="p-card">-</td><td class="rate" id="p-card-r">-</td><td class="rmk" id="p-card-rmk"></td></tr>
+
+            <tr class="result"><td class="item" colspan="2">가맹사업자 경상이익 (감가제외)</td><td class="num" id="p-op">-</td><td class="rate" id="p-op-r">-</td><td class="rmk"></td></tr>
+            <tr class="result"><td class="item" colspan="2">ROI (EBITDA 기준)</td><td class="num" id="p-roiE">-</td><td class="rate"></td><td class="rmk">감가기간 누적이익(감가제외) ÷ 시설투자</td></tr>
+
+            <tr class="sec"><td class="item" colspan="2">투자비용</td><td class="num" id="p-invc">-</td><td class="rate" id="p-invc-r">-</td><td class="rmk"></td></tr>
+            <tr><td class="cat" rowspan="2">감가</td><td class="item indent">시설감가상각</td><td class="num" id="p-dep">-</td><td class="rate" id="p-dep-r">-</td><td class="rmk" id="p-dep-rmk">시설투자 소계 ÷ 60개월</td></tr>
+            <tr><td class="item indent">보증금 이자</td><td class="num">-</td><td class="rate">0.0%</td><td class="rmk">보증금이자 적용안함</td></tr>
+
+            <tr class="result"><td class="item" colspan="2">가맹사업자 경상이익 (감가포함)</td><td class="num" id="p-net">-</td><td class="rate" id="p-net-r">-</td><td class="rmk"></td></tr>
+            <tr class="result"><td class="item" colspan="2">ROI</td><td class="num" id="p-roi">-</td><td class="rate"></td><td class="rmk">감가기간 누적이익(감가포함) ÷ 실투자금(보증금 제외)</td></tr>
+            <tr class="result"><td class="item" colspan="2">일 B.E.P (순매출 / 1일)</td><td class="num" id="p-bepn">-</td><td class="rate"></td><td class="rmk">감가상각 포함 고정비 기준</td></tr>
+            <tr class="result"><td class="item" colspan="2">일 B.E.P (총매출 / 1일)</td><td class="num" id="p-bepg">-</td><td class="rate"></td><td class="rmk">순매출 B.E.P × 1.1</td></tr>
+          </tbody>
+        </table></div>
+      </div>
+
+      <div class="card">
+        <h2>시나리오 분석</h2>
+        <div class="table-scroll"><table>
+          <tr><th>구분</th><th id="sc-h-p">비관 (-20%)</th><th>기본</th><th id="sc-h-o">낙관 (+20%)</th></tr>
+          <tr><td>일평균 총매출 (천원)</td><td id="sc-d-p">-</td><td id="sc-d-b">-</td><td id="sc-d-o">-</td></tr>
+          <tr><td>순매출 (월, 만원)</td><td id="sc-rev-p">-</td><td id="sc-rev-b">-</td><td id="sc-rev-o">-</td></tr>
+          <tr><td>경상이익 감가제외 (월)</td><td id="sc-profit-p">-</td><td id="sc-profit-b">-</td><td id="sc-profit-o">-</td></tr>
+          <tr><td>경상이익률</td><td id="sc-margin-p">-</td><td id="sc-margin-b">-</td><td id="sc-margin-o">-</td></tr>
+          <tr><td>임차료율</td><td id="sc-rr-p">-</td><td id="sc-rr-b">-</td><td id="sc-rr-o">-</td></tr>
+          <tr><td>연 ROI</td><td id="sc-roi-p">-</td><td id="sc-roi-b">-</td><td id="sc-roi-o">-</td></tr>
+          <tr><td>회수기간</td><td id="sc-pb-p">-</td><td id="sc-pb-b">-</td><td id="sc-pb-o">-</td></tr>
+        </table></div>
+      </div>
+
+      <div class="card">
+        <h2>매출 민감도 분석 <span class="cap">일평균 총매출 → 연 ROI</span></h2>
+        <div class="table-scroll"><table>
+          <thead><tr><th>일평균 총매출 (천원)</th><th>경상이익 (월)</th><th>경상이익률</th><th>임차료율</th><th>연 ROI</th><th>회수기간</th></tr></thead>
+          <tbody id="sens-body"></tbody>
+        </table></div>
+        <div class="legend">색상: 녹색(ROI ≥ 25%) · 황색(10~25%) · 적색(&lt; 10% 또는 적자) / ★ 표시 = 일평균 1,400천원 기준선</div>
+      </div>
+
+      <div class="card">
+        <h2>참고사항</h2>
+        <div class="notes">
+          · 초기 투자금 기본값은 <b>정보공개서 최근 등록본</b> 기준(132㎡·40평, 부가세 포함 환산). 계약이행보증금은 VAT 대상 아님.<br>
+          · 손익계산서 양식은 사내 표준 검토 양식을 따름: 소모품비 = 순매출×소모품비율, 카드수수료 = 순매출×카드매출비중×수수료율, 시설감가상각 = 시설투자 소계(⑤~⑧)÷감가기간, 일 B.E.P는 감가상각 포함 고정비 기준.<br>
+          · ROI(EBITDA) = 감가기간 누적 경상이익(감가제외)÷시설투자 소계 / ROI = 감가기간 누적 경상이익(감가포함)÷실투자금(보증금 제외) — 배수 표기.<br>
+          · 상단 KPI의 연 ROI·회수기간은 <b>실투자금(보증금 제외)</b> 기준으로 별도 산출.<br>
+          · 매출 연동(정률) 임차 시 임차료 = max(순매출×요율, 최소보장액)으로 자동 산출되며, B.E.P는 최소보장 구간/정률 구간을 구분해 계산.<br>
+          · 매출을 부가세 포함(POS)으로 입력하면 순매출 = ÷1.1 자동 환산 — 타 브랜드 비교 시 VAT 기준 일치 필수.<br>
+          · 판정 기준: 연 ROI 25% 이상(4년 내 회수) 양호 / 임차료율 12% 이하 양호, 12~15% 조건부, 15% 초과 신중 / 일평균 매출 1,400천원 이상 시 흑자 안정권.<br>
+          · '면적 기준 평당 환산' 버튼은 정보공개서 3.3㎡당 단가(인테리어 약 247.5 / 장비 약 283.3만원)로 자동 계산 — <b>추정치</b>이며 실제 견적으로 교체 필요.<br>
+          · 실제 의사결정 시 입지 권리(임차권 보호), 상권 트렌드, 경쟁점 밀도 등 정성요소 반드시 병행.
+        </div>
+      </div>
+      <footer>PASCUCCI 점포개발팀 · 내부 검토용 시뮬레이션 (대외 배포 금지)</footer>
+    </div>
+  </div>
+</div>
+
+<script>
+const fmt = (n) => {
+  if (!isFinite(n)) return '-';
+  const sign = n < 0 ? '-' : '';
+  const abs = Math.abs(Math.round(n));
+  if (abs >= 10000) { const eok = abs / 10000; return sign + (eok % 1 === 0 ? eok.toFixed(0) : eok.toFixed(2)) + '억원'; }
+  return sign + abs.toLocaleString() + '만원';
+};
+const fmtWon = (man) => { // 만원 → 원 단위 표기
+  if (!isFinite(man)) return '-';
+  const won = Math.round(man * 10000);
+  if (won === 0) return '-';
+  return won.toLocaleString();
+};
+const fmtPct = (n) => isFinite(n) ? n.toFixed(1) + '%' : '-';
+const fmtMonths = (n) => {
+  if (!isFinite(n) || n <= 0) return '-';
+  const y = Math.floor(n / 12); const m = Math.round(n % 12);
+  return (y > 0 ? y + '년 ' : '') + m + '개월';
+};
+const fmtK = (n) => isFinite(n) ? Math.round(n).toLocaleString() : '-';
+const v = (id) => parseFloat(document.getElementById(id).value) || 0;
+const put = (id, val) => document.getElementById(id).textContent = val;
+const putRmk = (id, val) => { const el = document.getElementById(id); if (el && !el.dataset.edited) el.textContent = val; };
+
+const PY_INTERIOR = 247.5;  // 정보공개서 3.3㎡당 인테리어 (만원)
+const PY_EQUIP = 283.3;     // 정보공개서 3.3㎡당 장비/가구 (만원)
+
+function getInvestment() {
+  const i1 = v('storeDeposit'), i2 = v('keymoney'), i3 = v('hqDeposit');
+  const i4 = v('hqOpening') + v('designFee') + v('training');
+  const i5 = v('interior'), i6 = v('equipment'), i7 = v('signage');
+  const i8 = v('firstGoods') + v('etcInvest');
+  const sub1 = i1 + i2 + i3 + i4;
+  const sub2 = i5 + i6 + i7 + i8;         // 시설투자 (감가상각 대상)
+  const total = sub1 + sub2;
+  const returnable = i1 + i3;
+  const sunk = total - returnable;
+  const lease = i1 + i2, franchise = i3 + i4, facility = sub2;
+  return { i1, i2, i3, i4, i5, i6, i7, i8, sub1, sub2, total, returnable, sunk, lease, franchise, facility };
+}
+
+function compute(dailyK) {
+  const days = v('bizDays');
+  const vatIncl = document.getElementById('vatMode').value === 'incl';
+  const grossM = vatIncl ? dailyK * days / 10 : dailyK * days / 10 * 1.1;  // 총매출(월, 만원)
+  const netM = grossM / 1.1;                                              // 순매출(월, 만원)
+  const cogsRate = v('cogsRate') / 100;
+  const royPct = v('royaltyPct') / 100;
+  const supRate = v('suppliesRate') / 100;
+  const cardEff = v('cardShare') / 100 * v('cardRate') / 100;             // 카드수수료 실효율
+  const cogs = netM * cogsRate;
+  const grossProfit = netM - cogs;
+  const royalty = netM * royPct + v('royaltyFixed');
+  const rentMode = document.getElementById('rentMode').value;
+  const rentRate = v('rentRate') / 100;
+  const mgRent = v('mgRent');
+  let rent, rentPctBinding = false;
+  if (rentMode === 'pct') {
+    const pctRent = netM * rentRate;
+    rent = Math.max(pctRent, mgRent);
+    rentPctBinding = pctRent >= mgRent;   // true: 정률 적용 / false: 최소보장 적용
+  } else {
+    rent = v('rent');
+  }
+  const mgmt = v('mgmtFee'), labor = v('labor'), utility = v('utility');
+  const comm = v('comm'), fees = v('fees');
+  const supplies = netM * supRate;
+  const card = netM * cardEff;
+  const sga = royalty + labor + utility + comm + fees + mgmt + rent + supplies + card;
+  const opProfit = grossProfit - sga;                                     // 경상이익 (감가제외)
+  const inv = getInvestment();
+  const dep = v('depYears') > 0 ? inv.sub2 / (v('depYears') * 12) : 0;    // 시설감가상각(월)
+  const netProfit = opProfit - dep;                                       // 경상이익 (감가포함)
+  const margin = netM > 0 ? (opProfit / netM) * 100 : 0;
+  const rentRatio = netM > 0 ? (rent / netM) * 100 : 0;
+  const roi = inv.sunk > 0 ? (opProfit * 12 / inv.sunk) * 100 : 0;        // KPI: 실투자금 기준
+  const payback = opProfit > 0 ? inv.sunk / opProfit : Infinity;
+  const months = v('depYears') * 12;
+  const roiEbitda = inv.sub2 > 0 ? (opProfit * months) / inv.sub2 : Infinity;             // 배수
+  const roiFull = inv.sunk > 0 ? (netProfit * months) / inv.sunk : Infinity;
+  // BEP: 정률 임차 시 구간별(최소보장 구간 vs 정률 구간) 산출
+  const otherFixed = labor + utility + comm + fees + mgmt + v('royaltyFixed');
+  const cmBase = 1 - cogsRate - royPct - supRate - cardEff;
+  let bepNetM;
+  if (rentMode === 'pct') {
+    const bepA = cmBase > 0 ? (otherFixed + mgRent + dep) / cmBase : Infinity;   // 최소보장 구간 가정
+    const cmB = cmBase - rentRate;
+    const bepB = cmB > 0 ? (otherFixed + dep) / cmB : Infinity;                  // 정률 구간 가정
+    if (isFinite(bepA) && bepA * rentRate <= mgRent + 1e-9) bepNetM = bepA;
+    else bepNetM = bepB;
+  } else {
+    bepNetM = cmBase > 0 ? (otherFixed + rent + dep) / cmBase : Infinity;
+  }
+  const bepNetD = days > 0 ? bepNetM / days : Infinity;                   // 일 BEP (순매출, 만원)
+  const bepGrossD = bepNetD * 1.1;                                        // 일 BEP (총매출, 만원)
+  return { dailyK, grossM, netM, cogs, grossProfit, royalty, rent, rentMode, rentRate, mgRent, rentPctBinding,
+           mgmt, labor, utility, comm, fees, supplies, card,
+           sga, opProfit, dep, netProfit, margin, rentRatio, roi, payback, roiEbitda, roiFull, bepNetM, bepNetD, bepGrossD };
+}
+
+function setKpi(elId, cls) { document.getElementById(elId).className = 'kpi' + (cls ? ' ' + cls : ''); }
+const roiClass = (r, profit) => (profit <= 0 || r < 10) ? 'k-bad' : (r >= 25 ? 'k-good' : 'k-mid');
+const rrClass = (rr) => rr <= 0 ? '' : (rr <= 12 ? 'k-good' : (rr <= 15 ? 'k-mid' : 'k-bad'));
+
+function applyAreaScale() {
+  const a = v('area');
+  if (a <= 0) return;
+  document.getElementById('interior').value = Math.round(a * PY_INTERIOR);
+  document.getElementById('equipment').value = Math.round(a * PY_EQUIP);
+  calc();
+}
+
+function calc() {
+  const baseDaily = v('dailySales');
+  const base = compute(baseDaily);
+  const inv = getInvestment();
+
+  // 임차 방식에 따른 입력 필드 토글
+  const isPct = document.getElementById('rentMode').value === 'pct';
+  document.getElementById('fld-rentFixed').style.display = isPct ? 'none' : 'flex';
+  document.getElementById('fld-rentRate').style.display = isPct ? 'flex' : 'none';
+  document.getElementById('fld-mgRent').style.display = isPct ? 'flex' : 'none';
+
+  // 임차조건 연동
+  put('lv-deposit', fmt(v('storeDeposit')));
+  put('lv-keymoney', fmt(v('keymoney')));
+  put('lv-rent', fmt(base.rent) + (isPct ? (base.rentPctBinding ? ' (정률)' : ' (M/G)') : ''));
+  put('lv-mgmt', fmt(v('mgmtFee')));
+
+  // 투자 소계
+  put('sub-lease', fmt(inv.lease));
+  put('sub-franchise', fmt(inv.franchise));
+  put('sub-facility', fmt(inv.facility));
+  put('s-total', fmt(inv.total));
+  put('s-return', fmt(inv.returnable));
+  put('s-sunk', fmt(inv.sunk));
+  put('s-perpy', v('area') > 0 ? fmt(inv.sunk / v('area')) + ' /평' : '-');
+
+  // KPI
+  put('k-roi', fmtPct(base.roi));
+  put('k-pb', fmtMonths(base.payback));
+  put('k-margin', fmtPct(base.margin));
+  put('k-rr', fmtPct(base.rentRatio));
+  put('k-bep', isFinite(base.bepGrossD) ? fmtK(base.bepGrossD * 10) + '천원' : '-');
+  setKpi('kpi-roi', roiClass(base.roi, base.opProfit));
+  setKpi('kpi-pb', base.payback <= 48 ? 'k-good' : (base.payback <= 72 ? 'k-mid' : 'k-bad'));
+  setKpi('kpi-margin', base.margin >= 15 ? 'k-good' : (base.margin >= 10 ? 'k-mid' : 'k-bad'));
+  setKpi('kpi-rr', rrClass(base.rentRatio));
+  setKpi('kpi-bep', '');
+
+  // ===== 손익계산서 (사내 표준 양식) =====
+  put('pnl-title', '손익 계산서 : ' + (document.getElementById('storeName').value || '신규 후보점') + ' (' + v('area') + '평)');
+  put('p-i1', fmtWon(inv.i1)); put('p-i2', fmtWon(inv.i2)); put('p-i3', fmtWon(inv.i3)); put('p-i4', fmtWon(inv.i4));
+  put('p-is1', fmtWon(inv.sub1));
+  put('p-i5', fmtWon(inv.i5)); put('p-i6', fmtWon(inv.i6)); put('p-i7', fmtWon(inv.i7)); put('p-i8', fmtWon(inv.i8));
+  put('p-is2', fmtWon(inv.sub2));
+  put('p-itot', fmtWon(inv.total));
+  // 평당 기준가 동적 표시 (입력값 ÷ 면적)
+  const a = v('area');
+  const pyI = a > 0 ? v('interior') / a : 0;
+  const pyE = a > 0 ? v('equipment') / a : 0;
+  put('hint-interior', (a > 0 && v('interior') > 0 ? '평당 약 ' + pyI.toFixed(1) + '만원 (' + a + '평 기준)' : '정보공개서 평당 약 247.5만원') + ' · 외부공사/철거 미포함');
+  put('hint-equipment', a > 0 && v('equipment') > 0 ? '평당 약 ' + pyE.toFixed(1) + '만원 (' + a + '평 기준)' : '정보공개서 평당 약 283.3만원');
+  putRmk('p-i5-rmk', pyI > 0 ? '평당 ' + fmtK(pyI * 10) + '천원 기준' : '평당 ' + fmtK(PY_INTERIOR * 10) + '천원 기준');
+  putRmk('p-days-rmk', '평균 월 ' + v('bizDays') + '일 적용');
+
+  put('p-gm', fmtWon(base.grossM)); put('p-nm', fmtWon(base.netM));
+  put('p-gd', fmtWon(v('bizDays') > 0 ? base.grossM / v('bizDays') : 0));
+  put('p-nd', fmtWon(v('bizDays') > 0 ? base.netM / v('bizDays') : 0));
+
+  const r = (x) => base.netM > 0 ? (x / base.netM * 100).toFixed(1) + '%' : '-';
+  put('p-cogs', fmtWon(base.cogs)); put('p-cogs-r', r(base.cogs)); putRmk('p-cogs-rmk', '원가율 ' + v('cogsRate') + '%');
+  put('p-gp', fmtWon(base.grossProfit)); put('p-gp-r', r(base.grossProfit));
+  put('p-sga', fmtWon(base.sga)); put('p-sga-r', r(base.sga));
+  put('p-roy', fmtWon(base.royalty)); put('p-roy-r', r(base.royalty));
+  putRmk('p-roy-rmk', v('royaltyPct') > 0 ? '순매출 ' + v('royaltyPct') + '%' + (v('royaltyFixed') > 0 ? ' + 정액' : '') : (v('royaltyFixed') > 0 ? '정액' : ''));
+  put('p-labor', fmtWon(base.labor)); put('p-labor-r', r(base.labor));
+  put('p-util', fmtWon(base.utility)); put('p-util-r', r(base.utility));
+  put('p-comm', fmtWon(base.comm)); put('p-comm-r', r(base.comm));
+  put('p-fees', fmtWon(base.fees)); put('p-fees-r', r(base.fees));
+  put('p-mgmt', fmtWon(base.mgmt)); put('p-mgmt-r', r(base.mgmt));
+  put('p-rent', fmtWon(base.rent)); put('p-rent-r', r(base.rent));
+  putRmk('p-rent-rmk', isPct
+    ? '순매출 ' + v('rentRate') + '% 연동' + (base.rentPctBinding ? (v('mgRent') > 0 ? ' (M/G ' + fmtK(v('mgRent')) + '만원 이상)' : '') : ' → 최소보장 ' + fmtK(v('mgRent')) + '만원 적용')
+    : '임차조건 연동 (고정)');
+  put('p-sup', fmtWon(base.supplies)); put('p-sup-r', r(base.supplies));
+  putRmk('p-sup-rmk', '순매출 ' + v('suppliesRate') + '% 반영');
+  put('p-card', fmtWon(base.card)); put('p-card-r', r(base.card));
+  putRmk('p-card-rmk', '순매출 ' + v('cardShare') + '%, ' + v('cardRate') + '% 수수료 반영');
+  put('p-op', fmtWon(base.opProfit)); put('p-op-r', r(base.opProfit));
+  put('p-roiE', isFinite(base.roiEbitda) ? base.roiEbitda.toFixed(1) : '-');
+  put('p-invc', fmtWon(base.dep)); put('p-invc-r', r(base.dep));
+  put('p-dep', fmtWon(base.dep)); put('p-dep-r', r(base.dep));
+  putRmk('p-dep-rmk', '시설투자 소계 ÷ ' + (v('depYears') * 12) + '개월');
+  put('p-net', fmtWon(base.netProfit)); put('p-net-r', r(base.netProfit));
+  put('p-roi', isFinite(base.roiFull) ? base.roiFull.toFixed(1) : '-');
+  put('p-bepn', fmtWon(base.bepNetD));
+  put('p-bepg', fmtWon(base.bepGrossD));
+
+  // 종합 판정
+  const verdictEl = document.getElementById('verdict');
+  const rrNote = base.rentRatio > 15 ? ' 임차료율 ' + fmtPct(base.rentRatio) + '로 기준(15%)을 초과하여 임대조건 재협상 또는 입지 재검토가 필요합니다.'
+              : base.rentRatio > 12 ? ' 임차료율 ' + fmtPct(base.rentRatio) + '는 조건부 구간(12~15%)입니다.'
+              : base.rentRatio > 0 ? ' 임차료율 ' + fmtPct(base.rentRatio) + '로 양호(≤12%)합니다.' : '';
+  const dailyNote = baseDaily >= 1400 ? '' : ' 일평균 매출이 기준선 1,400천원에 미달하므로 매출 가정의 근거(상권·유동·비교점포)를 반드시 검증하세요.';
+  const bepNote = isFinite(base.bepGrossD) ? ' 손익분기 일 총매출 약 ' + fmtK(base.bepGrossD * 10) + '천원(감가 포함).' : '';
+  if (base.opProfit <= 0) {
+    verdictEl.className = 'verdict bad';
+    verdictEl.textContent = '⚠ 적자 구조입니다.' + bepNote + ' 매출 가정 재검토가 필요합니다.' + rrNote;
+  } else if (base.roi >= 25 && base.payback <= 48) {
+    verdictEl.className = 'verdict good';
+    verdictEl.textContent = '✓ 매력적인 투자입니다. 회수기간 ' + fmtMonths(base.payback) + ', 연 ROI ' + fmtPct(base.roi) + '.' + rrNote + dailyNote + ' 비관 시나리오도 함께 확인하세요.';
+  } else if (base.roi >= 10) {
+    verdictEl.className = 'verdict warn';
+    verdictEl.textContent = '◯ 보통 수준입니다 (연 ROI ' + fmtPct(base.roi) + ').' + rrNote + dailyNote + ' 입지 안정성과 임차권 보호 기간(최소 5년)을 함께 고려하세요.';
+  } else {
+    verdictEl.className = 'verdict bad';
+    verdictEl.textContent = '✗ 투자 매력도가 낮습니다 (연 ROI ' + fmtPct(base.roi) + ').' + rrNote + dailyNote + ' 권리금·인테리어 협상 또는 매출 가정 재점검이 필요합니다.';
+  }
+
+  // 시나리오
+  const sp = v('scenarioPct') / 100;
+  put('sc-h-p', '비관 (-' + v('scenarioPct') + '%)');
+  put('sc-h-o', '낙관 (+' + v('scenarioPct') + '%)');
+  const pess = compute(baseDaily * (1 - sp));
+  const opt = compute(baseDaily * (1 + sp));
+  put('sc-d-p', fmtK(pess.dailyK)); put('sc-d-b', fmtK(base.dailyK)); put('sc-d-o', fmtK(opt.dailyK));
+  put('sc-rev-p', fmt(pess.netM)); put('sc-rev-b', fmt(base.netM)); put('sc-rev-o', fmt(opt.netM));
+  put('sc-profit-p', fmt(pess.opProfit)); put('sc-profit-b', fmt(base.opProfit)); put('sc-profit-o', fmt(opt.opProfit));
+  put('sc-margin-p', fmtPct(pess.margin)); put('sc-margin-b', fmtPct(base.margin)); put('sc-margin-o', fmtPct(opt.margin));
+  put('sc-rr-p', fmtPct(pess.rentRatio)); put('sc-rr-b', fmtPct(base.rentRatio)); put('sc-rr-o', fmtPct(opt.rentRatio));
+  put('sc-roi-p', fmtPct(pess.roi)); put('sc-roi-b', fmtPct(base.roi)); put('sc-roi-o', fmtPct(opt.roi));
+  put('sc-pb-p', fmtMonths(pess.payback)); put('sc-pb-b', fmtMonths(base.payback)); put('sc-pb-o', fmtMonths(opt.payback));
+
+  // 민감도
+  const sensBody = document.getElementById('sens-body');
+  sensBody.innerHTML = '';
+  [-30, -20, -10, 0, 10, 20, 30].forEach(step => {
+    const d = baseDaily * (1 + step / 100);
+    const s = compute(d);
+    const cellClass = (s.opProfit <= 0 || s.roi < 10) ? 'cell-bad' : (s.roi >= 25 ? 'cell-good' : 'cell-mid');
+    const star = (baseDaily < 1400 && d >= 1400) || (Math.abs(d - 1400) < baseDaily * 0.05) ? ' ★' : '';
+    const label = (step === 0 ? '<b>' : '') + (step > 0 ? '+' : '') + step + '% · ' + fmtK(d) + star + (step === 0 ? ' (기본)</b>' : '');
+    sensBody.innerHTML += '<tr>'
+      + '<td>' + label + '</td>'
+      + '<td>' + fmt(s.opProfit) + '</td>'
+      + '<td>' + fmtPct(s.margin) + '</td>'
+      + '<td>' + fmtPct(s.rentRatio) + '</td>'
+      + '<td class="' + cellClass + '">' + fmtPct(s.roi) + '</td>'
+      + '<td>' + fmtMonths(s.payback) + '</td>'
+      + '</tr>';
+  });
+}
+
+const presets = {
+  standard: {
+    area: 40, storeDeposit: 0, keymoney: 0, rentMode: 'fixed', rent: 400, rentRate: 15, mgRent: 0, mgmtFee: 50,
+    hqDeposit: 1000, hqOpening: 1100, designFee: 330, training: 165,
+    interior: 9900, signage: 1100, equipment: 11330, firstGoods: 550, etcInvest: 0,
+    dailySales: 1400, bizDays: 30, cogsRate: 35,
+    labor: 800, utility: 100, comm: 5, fees: 9,
+    royaltyPct: 2.5, royaltyFixed: 0, suppliesRate: 0.5, cardRate: 1.2, cardShare: 99,
+    depYears: 5, scenarioPct: 20
+  },
+  small: {
+    area: 15, storeDeposit: 0, keymoney: 0, rentMode: 'fixed', rent: 250, rentRate: 15, mgRent: 0, mgmtFee: 30,
+    hqDeposit: 1000, hqOpening: 1100, designFee: 330, training: 165,
+    interior: 3713, signage: 550, equipment: 4250, firstGoods: 300, etcInvest: 0,
+    dailySales: 900, bizDays: 30, cogsRate: 35,
+    labor: 450, utility: 60, comm: 5, fees: 5,
+    royaltyPct: 2.5, royaltyFixed: 0, suppliesRate: 0.5, cardRate: 1.2, cardShare: 99,
+    depYears: 5, scenarioPct: 20
+  },
+  reset: {
+    area: 0, storeDeposit: 0, keymoney: 0, rentMode: 'fixed', rent: 0, rentRate: 0, mgRent: 0, mgmtFee: 0,
+    hqDeposit: 0, hqOpening: 0, designFee: 0, training: 0,
+    interior: 0, signage: 0, equipment: 0, firstGoods: 0, etcInvest: 0,
+    dailySales: 0, bizDays: 30, cogsRate: 35,
+    labor: 0, utility: 0, comm: 0, fees: 0,
+    royaltyPct: 2.5, royaltyFixed: 0, suppliesRate: 0.5, cardRate: 1.2, cardShare: 99,
+    depYears: 5, scenarioPct: 20
+  }
+};
+function loadPreset(name) {
+  const p = presets[name];
+  Object.keys(p).forEach(k => { const el = document.getElementById(k); if (el) el.value = p[k]; });
+  calc();
+}
+
+// ===== 비고 셀 편집 기능 =====
+document.querySelectorAll('.pnl td.rmk').forEach((el, i) => {
+  el.setAttribute('contenteditable', 'true');
+  el.setAttribute('title', '클릭하여 비고를 직접 수정할 수 있습니다');
+  el.dataset.rmkIdx = i;
+  el.addEventListener('input', () => { el.dataset.edited = '1'; });
+});
+
+// ===== 점포별 저장 / 불러오기 (브라우저 localStorage) =====
+const STORE_KEY = 'pascucciRoiStores';
+function safeGetStores() {
+  try { return JSON.parse(localStorage.getItem(STORE_KEY)) || {}; } catch (e) { return {}; }
+}
+function refreshStoreList(selected) {
+  const sel = document.getElementById('storeList');
+  const stores = safeGetStores();
+  sel.innerHTML = '<option value="">저장된 점포 선택…</option>';
+  Object.keys(stores).sort().forEach(name => {
+    const opt = document.createElement('option');
+    opt.value = name;
+    opt.textContent = name + ' (' + stores[name].ts + ')';
+    if (name === selected) opt.selected = true;
+    sel.appendChild(opt);
+  });
+}
+function collectState() {
+  const values = {};
+  document.querySelectorAll('input[id], select[id]').forEach(el => { if (el.id !== 'storeList' && el.type !== 'file') values[el.id] = el.value; });
+  const rmks = [], rmkEdited = [];
+  document.querySelectorAll('.pnl td.rmk').forEach(el => { rmks.push(el.textContent); rmkEdited.push(el.dataset.edited === '1'); });
+  return { values, rmks, rmkEdited };
+}
+function applyState(st) {
+  Object.keys(st.values || {}).forEach(id => { const el = document.getElementById(id); if (el && el.type !== 'file') el.value = st.values[id]; });
+  const cells = document.querySelectorAll('.pnl td.rmk');
+  (st.rmks || []).forEach((txt, i) => {
+    if (cells[i] && st.rmkEdited && st.rmkEdited[i]) { cells[i].textContent = txt; cells[i].dataset.edited = '1'; }
+    else if (cells[i]) { delete cells[i].dataset.edited; }
+  });
+  calc();
+}
+function saveStore() {
+  const name = (document.getElementById('storeName').value || '').trim() || '이름 없는 점포';
+  try {
+    const stores = safeGetStores();
+    const now = new Date();
+    const ts = now.getFullYear().toString().slice(2) + '/' + String(now.getMonth()+1).padStart(2,'0') + '/' + String(now.getDate()).padStart(2,'0') + ' ' + String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0');
+    stores[name] = Object.assign({ ts }, collectState());
+    localStorage.setItem(STORE_KEY, JSON.stringify(stores));
+    refreshStoreList(name);
+    document.getElementById('saveInfo').textContent = "'" + name + "' 저장 완료 (" + ts + ")";
+  } catch (e) {
+    document.getElementById('saveInfo').textContent = '저장 실패: 이 환경에서는 브라우저 저장이 지원되지 않습니다';
+  }
+}
+function loadStore() {
+  const name = document.getElementById('storeList').value;
+  if (!name) { document.getElementById('saveInfo').textContent = '불러올 점포를 먼저 선택하세요'; return; }
+  const st = safeGetStores()[name];
+  if (!st) { document.getElementById('saveInfo').textContent = '저장 데이터를 찾을 수 없습니다'; return; }
+  applyState(st);
+  document.getElementById('saveInfo').textContent = "'" + name + "' 불러오기 완료 (저장: " + st.ts + ")";
+}
+function deleteStore() {
+  const name = document.getElementById('storeList').value;
+  if (!name) { document.getElementById('saveInfo').textContent = '삭제할 점포를 먼저 선택하세요'; return; }
+  if (!confirm("'" + name + "' 저장 데이터를 삭제할까요?")) return;
+  try {
+    const stores = safeGetStores();
+    delete stores[name];
+    localStorage.setItem(STORE_KEY, JSON.stringify(stores));
+    refreshStoreList('');
+    document.getElementById('saveInfo').textContent = "'" + name + "' 삭제 완료";
+  } catch (e) {}
+}
+function exportStores() {
+  const stores = safeGetStores();
+  const names = Object.keys(stores);
+  // 현재 화면 입력값도 함께 포함 (미저장 상태 대비)
+  const name = (document.getElementById('storeName').value || '').trim() || '이름 없는 점포';
+  if (!stores[name]) {
+    if (confirm("현재 화면의 '" + name + "' 데이터가 아직 저장되지 않았습니다. 저장 후 내보낼까요?")) saveStore();
+  }
+  const data = { app: 'pascucci-roi', version: 1, exportedAt: new Date().toISOString(), stores: safeGetStores() };
+  if (Object.keys(data.stores).length === 0) { document.getElementById('saveInfo').textContent = '내보낼 저장 데이터가 없습니다. 먼저 저장하세요.'; return; }
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  const now = new Date();
+  const stamp = now.getFullYear().toString().slice(2) + String(now.getMonth()+1).padStart(2,'0') + String(now.getDate()).padStart(2,'0');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'pascucci-roi-stores-' + stamp + '.json';
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
+  document.getElementById('saveInfo').textContent = Object.keys(data.stores).length + '개 점포 데이터를 JSON 파일로 내보냈습니다';
+}
+function importStores(input) {
+  const file = input.files && input.files[0];
+  input.value = '';
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const data = JSON.parse(reader.result);
+      const incoming = data && data.app === 'pascucci-roi' && data.stores ? data.stores : null;
+      if (!incoming || typeof incoming !== 'object') { document.getElementById('saveInfo').textContent = '가져오기 실패: 이 분석기의 내보내기 파일이 아닙니다'; return; }
+      const stores = safeGetStores();
+      const dup = Object.keys(incoming).filter(n => stores[n]);
+      if (dup.length > 0 && !confirm('동일한 점포명 ' + dup.length + '건(' + dup.slice(0,3).join(', ') + (dup.length > 3 ? ' 외' : '') + ')이 이미 있습니다. 가져온 데이터로 덮어쓸까요?')) return;
+      let count = 0;
+      Object.keys(incoming).forEach(n => {
+        const st = incoming[n];
+        if (st && st.values) { stores[n] = st; count++; }
+      });
+      localStorage.setItem(STORE_KEY, JSON.stringify(stores));
+      refreshStoreList('');
+      document.getElementById('saveInfo').textContent = count + '개 점포 데이터를 가져왔습니다. 목록에서 선택 후 불러오세요.';
+    } catch (e) {
+      document.getElementById('saveInfo').textContent = '가져오기 실패: 파일을 읽을 수 없습니다';
+    }
+  };
+  reader.readAsText(file, 'utf-8');
+}
+try { refreshStoreList(''); } catch (e) {}
+calc();
+</script>
+</body>
+</html>
